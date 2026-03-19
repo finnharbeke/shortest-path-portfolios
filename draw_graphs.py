@@ -30,7 +30,7 @@ def draw_coords(g, cds_file):
         lon = row['lon']
         folium.CircleMarker(location=(lat, lon), tooltip=i, fill=True).add_to(m)
 
-    m.save("shanghai.html")
+    m.save("graph_drawings/shanghai.html")
 
 if __name__ == "__main__":
     sh = Graph.load('sh')
