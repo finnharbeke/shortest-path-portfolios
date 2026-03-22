@@ -72,7 +72,7 @@ class Graph:
 
     def djikstra(self, s, instance=0):
         found = set()
-        dists = np.zeros((self.n))
+        dists = np.zeros((self.n,))
         dists.fill(np.inf)
         heap = heapdict()
         heap[s] = 0
@@ -125,10 +125,15 @@ if __name__ == "__main__":
     args = itertools.product([g], range(g.n), range(g.I))
     results = pool.starmap(Graph.djikstra, args)
     a_djd = np.zeros((g.I, g.n, g.n))
-    for (_, s, i), res in zip(args, results):
+    for (_, s, i), res in zip(itertools.product([g], range(g.n), range(g.I)), results):
         a_djd[i, s, :] = res
 
     t_a_dj = time.time() - start
 
     # ~0.018s per instance, just 4x speedup, 78s total
     print(f'all djikstra took {t_a_dj:.3f}s, {t_a_dj:.2f} / {g.I} = {t_a_dj / g.I:.4f}')
+
+    print('still doing the same thing:', np.allclose(a_fwd, a_djd))
+    # print(np.where(~np.isclose(a_fwd, a_djd)))
+
+    np.save('pick_pairs/sh_dists.npy', a_fwd)
