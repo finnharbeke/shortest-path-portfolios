@@ -3,7 +3,8 @@ import numpy as np
 import os
 import time
 from heapdict import heapdict
-from tqdm import tqdm
+import multiprocessing
+import itertools
 
 class Graph:
     def __init__(self):
@@ -116,15 +117,18 @@ if __name__ == "__main__":
     start = time.time()
     a_fwd = g.floyd_warshall()
     t_a_fw = time.time() - start
-    # ~0.0096s per instance, 42s total
+    # ~0.0096s per instance, 14x speedup, 42s total
     print(f'all floyd warshall took {t_a_fw:.3f}s, {t_a_fw:.2f} / {g.I} = {t_a_fw / g.I:.4f}')
 
     start = time.time()
+    pool = multiprocessing.Pool(4)
+    args = itertools.product([g], range(g.n), range(g.I))
+    results = pool.starmap(Graph.djikstra, args)
     a_djd = np.zeros((g.I, g.n, g.n))
-    for i in range(g.I):
-        for s in range(g.n):
-            a_djd[i, s, :] = g.djikstra(s, instance=i)
+    for (_, s, i), res in zip(args, results):
+        a_djd[i, s, :] = res
+
     t_a_dj = time.time() - start
 
-    # ~0.066s per instance, no speedup, 285s total
+    # ~0.018s per instance, just 4x speedup, 78s total
     print(f'all djikstra took {t_a_dj:.3f}s, {t_a_dj:.2f} / {g.I} = {t_a_dj / g.I:.4f}')
