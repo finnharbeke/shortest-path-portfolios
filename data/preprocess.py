@@ -3,6 +3,7 @@ import scipy.io
 import pandas as pd
 import os
 import numpy as np
+import geopy.distance
 
 def preprocess_from_adj_n_node_speed(prefix, normalize=False, dir_='data', adj_suffix='_adj', spd_suffix='_speed', ext='csv'):
     node_spd = pd.read_csv(os.path.join(dir_, f'{prefix}{spd_suffix}.{ext}'))
@@ -57,9 +58,19 @@ def preprocess_shanghai():
     # make arcs use u,v indices instead of labels
     to_indices = lambda col: list(map(lambda x: np.where(nodes_ix == x)[0].item(), arcs[:, col]))
     arcs = np.array(list(zip(to_indices(1), to_indices(2))))
+    
+    distances = []
+    for u, v in arcs:
+        u_coords = (nodes.loc[u, 'lat'], nodes.loc[u, 'lon'])
+        v_coords = (nodes.loc[v, 'lat'], nodes.loc[v, 'lon'])
+        d = geopy.distance.distance(u_coords, v_coords).m
+        distances.append(d)
+    
+    distances = np.array(distances)
 
     speed = scipy.io.loadmat('sh/selTraffic_1.mat')['selTraffic']
-    weight = pd.DataFrame(1 / speed.T) # calculating time as 1 / speed, since arcs are binary
+    # weight = pd.DataFrame(1 / speed.T) # calculating time as 1 / speed, since arcs are binary
+    weight = pd.DataFrame(distances / speed.T) # calculating time as 1 / speed, since arcs are binary
     # speed.plot.hist(column=list(range(20)), bins=100,alpha=0.1)
     # plt.show()
     # print(speed.head())
