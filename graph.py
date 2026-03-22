@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import time
+from heapdict import heapdict
 
 class Graph:
     def __init__(self):
@@ -24,8 +25,8 @@ class Graph:
             self.out_arcs.append([])
             self.in_arcs.append([])
         for a, (u, v) in enumerate(self.arcs):
-            self.out_arcs[u].append(v)
-            self.in_arcs[v].append(u)
+            self.out_arcs[u].append(a)
+            self.in_arcs[v].append(a)
 
     def load(city='sh', dir_='data'): # sh, la or sz
         g = Graph()
@@ -44,10 +45,8 @@ class Graph:
     def floyd_warshall(self, instance=0):
         # see https://en.wikipedia.org/wiki/Floyd-Warshall_algorithm#Pseudocode
         # single instance for now
-        distance = np.ones((self.n, self.n)) * np.inf
-        print(self.weights.head())
-        print(self.weights.index)
-        print(self.weights.columns)
+        distance = np.zeros((self.n, self.n))
+        distance.fill(np.inf)
         for a, (u, v) in enumerate(self.arcs):
             w = self.weights.loc[instance, a]
             distance[u, v] = w
@@ -63,12 +62,45 @@ class Graph:
 
         return distance
 
+    def djikstra(self, s, instance=0):
+        found = set()
+        dists = np.zeros((self.n))
+        dists.fill(np.inf)
+        heap = heapdict()
+        heap[s] = 0
+
+        while len(heap):
+            v, d = heap.popitem()
+            dists[v] = d
+            found.add(v)
+            for a in self.out_arcs[v]:
+                neighbour = self.arcs[a][1]
+                if neighbour in found:
+                    continue
+                w = self.weights.loc[instance, a]
+                if neighbour not in heap or heap[neighbour] > d + w:
+                    heap[neighbour] = d + w
+        return dists
 
 if __name__ == "__main__":
     g = Graph.load('sh')
     start = time.time()
     fwd = g.floyd_warshall()
-    print(f'one floyd warshall took {time.time() - start:.3f}s, {g.n}^3 = {g.n**3}')
+    t_fw = time.time() - start
+    # ~0.14s
+    print(f'one floyd warshall took {t_fw:.3f}s')
+
+    start = time.time()
+    djd = np.zeros((g.n, g.n))
+    for s in range(g.n):
+        djd[s, :] = g.djikstra(s)
+    t_dj = time.time() - start
+
+    # ~0.07s
+    print(f'one djikstra took {t_dj:.3f}s')
+
+    print('doing the same thing:', np.allclose(fwd, djd))
+
     source = 40
     k = 15
     print(f'{k} closest nodes from {source}:')
