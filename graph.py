@@ -3,11 +3,13 @@ import numpy as np
 import os
 import time
 from heapdict import heapdict
+from tqdm import tqdm
 
 class Graph:
     def __init__(self):
         self.n = 0
         self.m = 0
+        self.I = 0 # number of instances
         # labels for the vertices 0...n-1
         self.v_labels = None
         
@@ -33,6 +35,7 @@ class Graph:
         g.arcs = np.loadtxt(os.path.join(dir_, f'{city}_arcs.csv'), delimiter=',', dtype=int).tolist()
         g.weights = pd.read_csv(os.path.join(dir_, f'{city}_weights.csv'), index_col=0, header=0)
         g.weights.columns = g.weights.columns.astype(int)
+        g.I = len(g.weights)
         g.v_labels = np.loadtxt(os.path.join(dir_, f'{city}_labels_nodes.csv'), dtype=object).tolist()
         g.n = len(g.v_labels)
         g.m = len(g.arcs)
@@ -41,24 +44,28 @@ class Graph:
     
     def __repr__(self):
         return f'<{self.__class__.__name__}({self.n}, {self.m}) at {hex(id(self))}>'
-    
-    def floyd_warshall(self, instance=0):
-        # see https://en.wikipedia.org/wiki/Floyd-Warshall_algorithm#Pseudocode
-        # single instance for now
-        distance = np.zeros((self.n, self.n))
+
+    def floyd_warshall(self, instances='all'):
+        if instances == 'all':
+            distance = np.zeros((self.I, self.n, self.n))
+        else:
+            distance = np.zeros((len(instances), self.n, self.n))
         distance.fill(np.inf)
+
         for a, (u, v) in enumerate(self.arcs):
-            w = self.weights.loc[instance, a]
-            distance[u, v] = w
+            if instances == 'all':
+                w = self.weights.loc[:, a]
+            else:
+                w = self.weights.loc[instances, a]
+            distance[:, u, v] = w
         for v in range(self.n):
-            distance[v, v] = 0
+            distance[:, v, v] = 0
 
         for k in range(self.n):
             for i in range(self.n):
                 for j in range(self.n):
-                    via = distance[i, k] + distance[k, j]
-                    if distance[i, j] > via:
-                        distance[i, j] = via
+                    via = distance[:, i, k] + distance[:, k, j]
+                    distance[:, i, j] = np.where(distance[:, i, j] > via, via, distance[:, i, j])
 
         return distance
 
@@ -85,9 +92,9 @@ class Graph:
 if __name__ == "__main__":
     g = Graph.load('sh')
     start = time.time()
-    fwd = g.floyd_warshall()
+    fwd = g.floyd_warshall(instances=[0])
     t_fw = time.time() - start
-    # ~0.14s
+    # now ~1.3s from multiple instances overhead, single inst implementation was ~0.14s
     print(f'one floyd warshall took {t_fw:.3f}s')
 
     start = time.time()
@@ -104,4 +111,20 @@ if __name__ == "__main__":
     source = 40
     k = 15
     print(f'{k} closest nodes from {source}:')
-    print(sorted(list(zip(range(g.n), fwd[40].tolist())), key=lambda x: x[1])[:k])
+    print(sorted(list(zip(range(g.n), fwd[0][40].tolist())), key=lambda x: x[1])[:k])
+
+    start = time.time()
+    a_fwd = g.floyd_warshall()
+    t_a_fw = time.time() - start
+    # ~0.0096s per instance, 42s total
+    print(f'all floyd warshall took {t_a_fw:.3f}s, {t_a_fw:.2f} / {g.I} = {t_a_fw / g.I:.4f}')
+
+    start = time.time()
+    a_djd = np.zeros((g.I, g.n, g.n))
+    for i in range(g.I):
+        for s in range(g.n):
+            a_djd[i, s, :] = g.djikstra(s, instance=i)
+    t_a_dj = time.time() - start
+
+    # ~0.066s per instance, no speedup, 285s total
+    print(f'all djikstra took {t_a_dj:.3f}s, {t_a_dj:.2f} / {g.I} = {t_a_dj / g.I:.4f}')
