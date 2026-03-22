@@ -70,7 +70,8 @@ class Graph:
 
         return distance
 
-    def djikstra(self, s, instance=0):
+    def djikstra(self, s, t=None, instance=0):
+        """ returns distance array from s, if no t given, other wise dist(s, t) """
         found = set()
         dists = np.zeros((self.n,))
         dists.fill(np.inf)
@@ -79,6 +80,8 @@ class Graph:
 
         while len(heap):
             v, d = heap.popitem()
+            if v == t:
+                return d
             dists[v] = d
             found.add(v)
             for a in self.out_arcs[v]:
@@ -88,6 +91,8 @@ class Graph:
                 w = self.weights.loc[instance, a]
                 if neighbour not in heap or heap[neighbour] > d + w:
                     heap[neighbour] = d + w
+        if t is not None:
+            return np.inf
         return dists
 
 if __name__ == "__main__":
