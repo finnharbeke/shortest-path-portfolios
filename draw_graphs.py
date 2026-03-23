@@ -22,13 +22,14 @@ def draw_coords(g, cds_file):
     for arc in g.arcs:
         u, v = arc
         latlon = lambda row: (row['lat'], row['lon'])
-        folium.PolyLine([latlon(0.8*cds.loc[u] + 0.2*cds.loc[v]), latlon(0.2*cds.loc[u] + 0.8*cds.loc[v])], color='#666666').add_to(m)
-        folium.PolyLine([latlon(0.2*cds.loc[u] + 0.8*cds.loc[v]), latlon(cds.loc[v])], color='#c64444').add_to(m)
+        folium.PolyLine([latlon(0.8*cds.loc[u] + 0.2*cds.loc[v]), latlon(0.2*cds.loc[u] + 0.8*cds.loc[v])], color='#6666a1', weight=5).add_to(m)
+        folium.PolyLine([latlon(0.2*cds.loc[u] + 0.8*cds.loc[v]), latlon(cds.loc[v])], color='#c65522', weight=5).add_to(m)
 
     for i, row in cds.iterrows():
         lat = row['lat']
         lon = row['lon']
-        folium.CircleMarker(location=(lat, lon), tooltip=i, fill=True).add_to(m)
+        folium.CircleMarker(location=(lat, lon), radius=10, tooltip=i, fill=True, fillOpacity=0.5, color='#fff').add_to(m)
+        folium.Marker(location=(lat, lon), icon=folium.features.DivIcon(icon_anchor=(8, 10), html=f'<div style="font-size:11pt; color:#222">{i:02d}</div>')).add_to(m)
 
     m.save("graph_drawings/shanghai.html")
 
