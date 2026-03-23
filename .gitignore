@@ -1,3 +1,4 @@
 **/.DS_Store
 **/__pycache__/*
-**.npy
+pick_pairs/sh_dists.npy
+pick_pairs/sh_paths.csv

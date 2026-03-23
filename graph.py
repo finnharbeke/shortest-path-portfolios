@@ -70,75 +70,80 @@ class Graph:
 
         return distance
 
-    def djikstra(self, s, t=None, instance=0):
+    def djikstra(self, s, t=None, instance=0, path=False):
         """ returns distance array from s, if no t given, other wise dist(s, t) """
-        found = set()
-        dists = np.zeros((self.n,))
-        dists.fill(np.inf)
         heap = heapdict()
+        found = set()
+
+        if t is None:
+            dists = np.zeros((self.n,))
+            dists.fill(np.inf)
+
         heap[s] = 0
+        if path:
+            paths = np.zeros((self.n,), dtype=object)
+            paths.fill('')
+            paths[s] = str(s)
 
         while len(heap):
+            # next node
             v, d = heap.popitem()
-            if v == t:
-                return d
-            dists[v] = d
+            if path:
+                p = paths[v]
             found.add(v)
+            # found target?
+            if v == t:
+                if path:
+                    return d, p
+                else:
+                    return d
+            elif t is None: # track all distances
+                dists[v] = d
+
             for a in self.out_arcs[v]:
                 neighbour = self.arcs[a][1]
                 if neighbour in found:
                     continue
                 w = self.weights.loc[instance, a]
+
                 if neighbour not in heap or heap[neighbour] > d + w:
                     heap[neighbour] = d + w
-        if t is not None:
-            return np.inf
-        return dists
+                    if path:
+                        paths[neighbour] = p + ',' + str(neighbour)
+
+        if path:
+            if t is not None:
+                return np.inf, ''
+            return dists, paths
+        else:
+            if t is not None:
+                return np.inf
+            return dists
+
+    def djikstra_all_paths(self, instance=0):
+        all_paths = []
+        for s in range(self.n):
+            _, paths = self.djikstra(s, instance=instance, path=True)
+            all_paths.append(paths)
+        return np.concatenate(all_paths)
 
 if __name__ == "__main__":
     g = Graph.load('sh')
-    start = time.time()
-    fwd = g.floyd_warshall(instances=[0])
-    t_fw = time.time() - start
-    # now ~1.3s from multiple instances overhead, single inst implementation was ~0.14s
-    print(f'one floyd warshall took {t_fw:.3f}s')
 
     start = time.time()
-    djd = np.zeros((g.n, g.n))
-    for s in range(g.n):
-        djd[s, :] = g.djikstra(s)
-    t_dj = time.time() - start
-
-    # ~0.07s
-    print(f'one djikstra took {t_dj:.3f}s')
-
-    print('doing the same thing:', np.allclose(fwd, djd))
-
-    source = 40
-    k = 15
-    print(f'{k} closest nodes from {source}:')
-    print(sorted(list(zip(range(g.n), fwd[0][40].tolist())), key=lambda x: x[1])[:k])
-
+    g.djikstra(6, path=True)
+    # ~0.004s
+    print(f'time for one source, all paths, {time.time() - start:.3f}s')
     start = time.time()
-    a_fwd = g.floyd_warshall()
-    t_a_fw = time.time() - start
-    # ~0.0096s per instance, 14x speedup, 42s total
-    print(f'all floyd warshall took {t_a_fw:.3f}s, {t_a_fw:.2f} / {g.I} = {t_a_fw / g.I:.4f}')
-
+    g.djikstra_all_paths()
+    # ~0.077s
+    print(f'time for all sources, all paths, {time.time() - start:.3f}s')
+    
     start = time.time()
     pool = multiprocessing.Pool(4)
-    args = itertools.product([g], range(g.n), range(g.I))
-    results = pool.starmap(Graph.djikstra, args)
-    a_djd = np.zeros((g.I, g.n, g.n))
-    for (_, s, i), res in zip(itertools.product([g], range(g.n), range(g.I)), results):
-        a_djd[i, s, :] = res
+    results = pool.starmap(Graph.djikstra_all_paths, itertools.product([g], range(g.I)))
+    paths = pd.DataFrame(np.vstack(results), columns=[f'{u}-{v}' for u in range(g.n) for v in range(g.n)])
 
-    t_a_dj = time.time() - start
-
-    # ~0.018s per instance, just 4x speedup, 78s total
-    print(f'all djikstra took {t_a_dj:.3f}s, {t_a_dj:.2f} / {g.I} = {t_a_dj / g.I:.4f}')
-
-    print('still doing the same thing:', np.allclose(a_fwd, a_djd))
-    # print(np.where(~np.isclose(a_fwd, a_djd)))
-
-    np.save('pick_pairs/sh_dists.npy', a_fwd)
+    t_a = time.time() - start
+    print(f'time for all instances, {t_a:.3f}s, {t_a:.0f}s / {g.I} = {t_a / g.I:.3f}s')
+    paths.to_csv('pick_pairs/sh_paths.csv')
