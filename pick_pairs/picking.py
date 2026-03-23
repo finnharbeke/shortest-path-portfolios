@@ -25,5 +25,5 @@ if __name__ == "__main__":
     sns.histplot(dist_uv, x='std')
     plt.savefig('sh_hist.png')
     fig = px.scatter(dist_uv, x='mean', y='std', color='u', hover_data=['u', 'v'])
-    plotly.offline.plot(fig, filename='sh_scatter.html')
+    plotly.offline.plot(fig, filename='sh_dist_scatter.html')
     print(dist_uv.head())
