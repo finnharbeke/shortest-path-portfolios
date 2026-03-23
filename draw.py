@@ -3,9 +3,11 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd
+import numpy as np
 import folium
 
 cm = mpl.colormaps['Spectral']
+ecm = mpl.color_sequences['Set1']
 
 def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     nxg = nx.DiGraph()
@@ -18,7 +20,53 @@ def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     if savefig is None:
         plt.show()
     else:
-        plt.savefig(savefig)
+        plt.savefig(savefig, dpi=300)
+
+def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5)):
+    """ takes paths as list of strings """
+    nxg = nx.MultiDiGraph()
+    paths = [p.split(',') for p in paths]
+    paths = [[(int(p[i]), int(p[i+1])) for i in range(len(p)-1)] for p in paths]
+    nxg.add_edges_from(g.arcs)
+    arc_to_path = dict()
+    for p_ix, p in enumerate(paths):
+        for u, v in p:
+            if (u, v) in arc_to_path:
+                # hyperarcs
+                nxg.add_edge(u, v)
+            arc_to_path[(u, v)] = arc_to_path.get((u, v), []) + [p_ix]
+    
+    edge_color = []
+    arc_count = dict()
+    for (u, v) in list(nxg.edges()):
+        if (u, v) not in arc_to_path:
+            edge_color.append('#0001')
+        else:
+            ac = arc_count.get((u, v), 0)
+
+            edge_color.append(mpl.colors.to_hex(ecm[arc_to_path[(u,v)][ac] % len(ecm)]))
+            arc_count[(u,v)] = ac+1
+
+    connectionstyle = [f"arc3,rad={r}" for r in np.linspace(.1, 2, 20)]
+
+    fig = plt.figure(figsize=figsize)
+    node_color = [cm(u / (g.n - 1)) for u in list(nxg)]
+    node_color = list(map(mpl.colors.to_hex, node_color))
+    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=9, ax=fig.gca(), node_color=node_color, edge_color=edge_color, connectionstyle=connectionstyle)
+
+    # write little legend
+    if info is not None:
+        for p_ix in range(len(paths)):
+            fig.gca().text(0.9, 0.9 - p_ix * 0.05, f'█: {info[p_ix]}',
+                           fontdict=dict(color=mpl.colors.to_hex(ecm[p_ix % len(ecm)])),
+                           horizontalalignment='right')
+
+
+    plt.tight_layout()
+    if savefig is None:
+        plt.show()
+    else:
+        plt.savefig(savefig, dpi=300)
 
 def draw_coords(g, cds_file):
     cds = pd.read_csv(cds_file, index_col=0)
