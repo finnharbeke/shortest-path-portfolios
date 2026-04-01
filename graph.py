@@ -34,7 +34,8 @@ class Graph:
     @staticmethod
     def load(city='sh', dir_='data'): # sh, la or sz
         g = Graph()
-        g.arcs = np.loadtxt(os.path.join(dir_, f'{city}_arcs.csv'), delimiter=',', dtype=int).tolist()
+        arcs = np.loadtxt(os.path.join(dir_, f'{city}_arcs.csv'), delimiter=',', dtype=int).tolist()
+        g.arcs = [tuple(arc) for arc in arcs]
         g.weights = pd.read_csv(os.path.join(dir_, f'{city}_weights.csv'), index_col=0, header=0)
         g.weights.columns = g.weights.columns.astype(int)
         g.I = len(g.weights)

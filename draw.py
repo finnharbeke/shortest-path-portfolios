@@ -1,10 +1,13 @@
-from graph import Graph
+import functools
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd
 import numpy as np
 import folium
+
+from graph import Graph
+from path import Path
 
 cm = mpl.colormaps['Spectral']
 ecm = mpl.color_sequences['Set1']
@@ -22,19 +25,19 @@ def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     else:
         plt.savefig(savefig, dpi=300)
 
-def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5)):
+def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''):
     """ takes paths as list of strings """
     nxg = nx.MultiDiGraph()
-    paths = [p.split(',') for p in paths]
-    paths = [[(int(p[i]), int(p[i+1])) for i in range(len(p)-1)] for p in paths]
+    paths = list(map(functools.partial(Path.to_arc_based, graph=g), paths))
     nxg.add_edges_from(g.arcs)
     arc_to_path = dict()
     for p_ix, p in enumerate(paths):
-        for u, v in p:
-            if (u, v) in arc_to_path:
+        for a in Path.to_integers(p):
+            arc = g.arcs[a]
+            if arc in arc_to_path:
                 # hyperarcs
-                nxg.add_edge(u, v)
-            arc_to_path[(u, v)] = arc_to_path.get((u, v), []) + [p_ix]
+                nxg.add_edge(*arc)
+            arc_to_path[arc] = arc_to_path.get(arc, []) + [p_ix]
     
     edge_color = []
     arc_count = dict()
@@ -60,7 +63,8 @@ def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5)):
             fig.gca().text(0.9, 0.9 - p_ix * 0.05, f'█: {info[p_ix]}',
                            fontdict=dict(color=mpl.colors.to_hex(ecm[p_ix % len(ecm)])),
                            horizontalalignment='right')
-
+    if len(title):
+        plt.title(title)
 
     plt.tight_layout()
     if savefig is None:
