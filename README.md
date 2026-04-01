@@ -62,8 +62,23 @@ this dataset has arc-speeds (instead of node-), so weight is 1 / arc-speed
 
 ## picking pairs
 
-### f(dist(u,v))
+`f(dist(u,v))`
 
 *Distribution of the shortest distance*
 
 
+`SP(u,v)`
+
+*the categorical RV of paths*
+
+see `pick_pairs/` directory for plots and picks
+
+## baselines
+
+### metric
+
+$$
+
+\frac1I \cdot \sum_{i=1}^I \min_{p \in P}(c(p)) 
+
+$$

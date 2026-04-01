@@ -15,7 +15,7 @@ class Graph:
         self.v_labels = None
         
         # columns are edges, rows instances, 
-        self.weights: pd.DataFrame | None = None
+        self.weights: pd.DataFrame
         # from - edge -> to
         self.arcs = [] # arcs of form (u in 0...n-1, v in 0...n-1)
         self.out_arcs = [] # list of outgoing arcs (a in 0...m-1)
@@ -48,7 +48,6 @@ class Graph:
         return f'<{self.__class__.__name__}({self.n}, {self.m}) at {hex(id(self))}>'
 
     def floyd_warshall(self, instances='all'):
-        assert self.weights is not None
         if instances == 'all':
             distance = np.zeros((self.I, self.n, self.n))
         else:
@@ -73,8 +72,9 @@ class Graph:
         return distance
 
     def djikstra(self, s, t=None, instance=0, path=False):
-        """ returns distance array from s, if no t given, other wise dist(s, t) """
-        assert self.weights is not None
+        """ returns distance array from s, if no t given, other wise dist(s, t)
+            if path is True it returns tuple with path(s) 
+        """
         heap = heapdict()
         found = set()
 
@@ -85,8 +85,7 @@ class Graph:
         heap[s] = 0
         if path:
             paths = np.zeros((self.n,), dtype=object)
-            paths.fill('')
-            paths[s] = str(s)
+            paths.fill('a') # a0-1-2 is arc-based path notation and v0-1-2 is vertex-based
 
         while len(heap):
             # next node
@@ -112,7 +111,7 @@ class Graph:
                 if neighbour not in heap or heap[neighbour] > d + w:
                     heap[neighbour] = d + w
                     if path:
-                        paths[neighbour] = p + ',' + str(neighbour)
+                        paths[neighbour] = f'{p}{"-" if len(p) > 1 else ""}{a}'
 
         if path:
             if t is not None:
