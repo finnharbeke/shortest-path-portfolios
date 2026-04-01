@@ -15,7 +15,7 @@ class Graph:
         self.v_labels = None
         
         # columns are edges, rows instances, 
-        self.weights: pd.DataFrame = None
+        self.weights: pd.DataFrame | None = None
         # from - edge -> to
         self.arcs = [] # arcs of form (u in 0...n-1, v in 0...n-1)
         self.out_arcs = [] # list of outgoing arcs (a in 0...m-1)
@@ -24,13 +24,14 @@ class Graph:
     def build_out_in(self):
         self.out_arcs = []
         self.in_arcs = []
-        for u in range(self.n):
+        for _ in range(self.n):
             self.out_arcs.append([])
             self.in_arcs.append([])
         for a, (u, v) in enumerate(self.arcs):
             self.out_arcs[u].append(a)
             self.in_arcs[v].append(a)
 
+    @staticmethod
     def load(city='sh', dir_='data'): # sh, la or sz
         g = Graph()
         g.arcs = np.loadtxt(os.path.join(dir_, f'{city}_arcs.csv'), delimiter=',', dtype=int).tolist()
@@ -47,6 +48,7 @@ class Graph:
         return f'<{self.__class__.__name__}({self.n}, {self.m}) at {hex(id(self))}>'
 
     def floyd_warshall(self, instances='all'):
+        assert self.weights is not None
         if instances == 'all':
             distance = np.zeros((self.I, self.n, self.n))
         else:
@@ -72,6 +74,7 @@ class Graph:
 
     def djikstra(self, s, t=None, instance=0, path=False):
         """ returns distance array from s, if no t given, other wise dist(s, t) """
+        assert self.weights is not None
         heap = heapdict()
         found = set()
 

@@ -2,3 +2,4 @@
 **/__pycache__/*
 pick_pairs/sh_dists.npy
 pick_pairs/sh_paths.csv
+uv.lock
