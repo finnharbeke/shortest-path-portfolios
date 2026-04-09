@@ -24,6 +24,7 @@ def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
         plt.show()
     else:
         plt.savefig(savefig, dpi=300)
+    plt.close()
 
 def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''):
     """ takes paths as list of strings """

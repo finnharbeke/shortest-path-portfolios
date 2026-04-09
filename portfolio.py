@@ -58,7 +58,7 @@ class Portfolio:
         vc = df['path'].value_counts(normalize=True)
         paths = vc.index[:k]
         dists = vc.iloc[:k]
-        dists = [f'{d:.3}' for d in dists]
+        dists = [f'{d:.3f}' for d in dists]
 
         p = Portfolio(graph, paths, dists)
         p._opt = df['dist'].mean()

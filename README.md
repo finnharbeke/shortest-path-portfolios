@@ -82,3 +82,5 @@ $$
 \frac1I \cdot \sum_{i=1}^I \min_{p \in P}(c(p)) 
 
 $$
+
+greedy, djikstra with penalties, best on avg, kmeans
