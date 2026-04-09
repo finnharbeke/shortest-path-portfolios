@@ -43,7 +43,7 @@ class Path:
             return path
         else:
             arcs = Path.to_integers(path)
-            v_path = 'v' + str(graph.arcs[0][0])
+            v_path = 'v' + str(graph.arcs[arcs[0]][0])
             for a in arcs:
                 v_path += f'-{graph.arcs[a][1]}'
             return v_path

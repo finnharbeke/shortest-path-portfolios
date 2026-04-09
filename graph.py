@@ -5,6 +5,7 @@ import time
 from heapdict import heapdict
 import multiprocessing
 import itertools
+import networkx as nx
 
 class Graph:
     def __init__(self):
@@ -123,12 +124,21 @@ class Graph:
                 return np.inf
             return dists
 
-    def djikstra_all_paths(self, instance=0):
+    def djikstra_all_pairs(self, instance=0):
         all_paths = []
         for s in range(self.n):
             _, paths = self.djikstra(s, instance=instance, path=True)
             all_paths.append(paths)
         return np.concatenate(all_paths)
+
+    def nx_all_paths(self, source, target):
+        nxg = nx.DiGraph()
+        nxg.add_edges_from((*a, dict(ix=i)) for i, a in enumerate(self.arcs))
+        paths = nx.all_simple_edge_paths(nxg, source, target)
+        def to_format(path):
+            return 'a' + '-'.join(str(nxg.get_edge_data(u, v)['ix']) for u, v in path)
+        paths = map(to_format, paths)
+        return paths
 
 if __name__ == "__main__":
     g = Graph.load('sh')
@@ -144,7 +154,7 @@ if __name__ == "__main__":
     
     start = time.time()
     pool = multiprocessing.Pool(4)
-    results = pool.starmap(Graph.djikstra_all_paths, itertools.product([g], range(g.I)))
+    results = pool.starmap(Graph.djikstra_all_pairs, itertools.product([g], range(g.I)))
     paths = pd.DataFrame(np.vstack(results), columns=[f'{u}-{v}' for u in range(g.n) for v in range(g.n)])
 
     t_a = time.time() - start

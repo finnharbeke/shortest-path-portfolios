@@ -27,18 +27,18 @@ class Portfolio:
 
         return f'<{self.__class__.__name__}(k={self.k}) at {hex(id(self))}>'
 
+    def costs(self):
+        costs = pd.DataFrame(columns=self.P)
+        int_P = map(Path.to_integers, self.P)
+        for ixs, path in zip(int_P, self.P):
+            p_costs = self.g.weights[ixs].sum(axis=1)
+            costs[path] = p_costs
+        return costs
+
     def score(self):
         if self._score is not None:
             return self._score
-        costs = pd.DataFrame(columns=self.P)
-        int_P = list(map(Path.to_integers, self.P))
-        for i, row in self.g.weights.iterrows():
-            i_costs = [
-                row.loc[p].sum() for p in int_P
-            ]
-            costs.loc[i] = i_costs
-
-        self._score = costs.min(axis=1).mean()
+        self._score = self.costs().min(axis=1).mean()
         return self._score
 
     def draw(self, **kwargs):
@@ -64,15 +64,26 @@ class Portfolio:
         p._opt = df['dist'].mean()
         return p
 
+    @staticmethod
+    def greedy(graph: Graph, s, t, k=5) -> Portfolio:
+        ps = list(graph.nx_all_paths(s, t))
+        all_path_port = Portfolio(graph, ps)
+        all_path_costs = all_path_port.costs()
+        exp_val = all_path_costs.mean()
+        # overall best path
+        best_avg = exp_val.index[exp_val.argmin()]
+        my_costs = all_path_costs[best_avg].copy()
+        portfolio = [best_avg]
+        for i in range(1, k):
+            # add i-th to the group
+            pass
+        return Portfolio(graph, portfolio)
+
 if __name__ == "__main__":
     g = Graph.load()
 
     pairs = pd.read_csv('pick_pairs/sh_picks.csv')
-    for i, pair in pairs.iterrows():
-        s, t = pair
-        for k in range(1, 9):
-            p = Portfolio.most_frequent(g, s, t, k=k)
-            # calculate
-            p.score()
-            p.draw(savefig=f'graph_drawings/sh_{s}-{t}_mf{k}.png')
-
+    u, v = pairs.iloc[0]
+    print(u, v)
+    p = Portfolio.greedy(g, u, v)
+    print(p)
