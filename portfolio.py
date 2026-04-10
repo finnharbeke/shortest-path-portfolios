@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import functools
 import numpy as np
@@ -43,6 +44,21 @@ class Portfolio:
         self._score = self.costs().min(axis=1).mean()
         return self._score
 
+    def save(self, path):
+        fields = [
+            self.method,
+            self.k,
+            self._score,
+            '[' + ';'.join(self.P) + ']'
+        ]
+        if os.path.exists(path):
+            df = pd.read_csv(path, index_col=0)
+        else:
+            df = pd.DataFrame(columns=['method', 'k', 'cost', 'portfolio'])
+        df.loc[len(df)] = fields
+        df.drop_duplicates(inplace=True)
+        df.to_csv(path)
+
     def draw(self, **kwargs):
         title = f'{self.method} (k = {self.k})'
         if self._score is not None:
@@ -67,7 +83,7 @@ class Portfolio:
         subset_costs = costs[paths[0]]
         subset_scores = [subset_costs.mean()]
         for j in range(1, k):
-            subset_costs = np.minimum(subset_costs, costs[paths[max(j, len(paths)-1)]])
+            subset_costs = np.minimum(subset_costs, costs[paths[min(j, len(paths)-1)]])
             subset_scores.append(subset_costs.mean())
 
         subset_ratios = [sc / p._opt - 1 for sc in subset_scores]
@@ -112,9 +128,11 @@ if __name__ == "__main__":
         pbar.write(f'{u} -> {v}')
         p = Portfolio.greedy(g, u, v, k=8)
         p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
+        p.save(f'portfolios/sh_{u}-{v}')
 
     pbar = tqdm.tqdm(pairs.iterrows())
     for _, (u, v) in pbar:
         pbar.write(f'{u} -> {v}')
         p = Portfolio.most_frequent(g, u, v, k=8)
         p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
+        p.save(f'portfolios/sh_{u}-{v}')
