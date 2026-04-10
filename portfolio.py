@@ -67,16 +67,21 @@ class Portfolio:
     @staticmethod
     def greedy(graph: Graph, s, t, k=5) -> Portfolio:
         ps = list(graph.nx_all_paths(s, t))
-        all_path_port = Portfolio(graph, ps)
-        all_path_costs = all_path_port.costs()
-        exp_val = all_path_costs.mean()
+        all_path_portfolio = Portfolio(graph, ps)
+        all_path_costs = all_path_portfolio.costs()
+        expected_cost = all_path_costs.mean()
         # overall best path
-        best_avg = exp_val.index[exp_val.argmin()]
-        my_costs = all_path_costs[best_avg].copy()
-        portfolio = [best_avg]
-        for i in range(1, k):
-            # add i-th to the group
-            pass
+        shortest_mean_path = expected_cost.index[expected_cost.argmin()]
+        portfolio = [shortest_mean_path]
+        for _ in range(1, k):
+            # add the next k-1
+            current_costs = all_path_costs[portfolio].min(axis=1)
+            # max(portfolio_cost - path_cost, 0)
+            difference = -all_path_costs.sub(current_costs, axis=0)
+            improvement = difference.clip(lower=0).mean()
+            most_improving_path = improvement.index[improvement.argmax()]
+            portfolio.append(most_improving_path)
+
         return Portfolio(graph, portfolio)
 
 if __name__ == "__main__":
