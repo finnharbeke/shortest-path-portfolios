@@ -61,7 +61,7 @@ def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''
     # write little legend
     if info is not None:
         for p_ix in range(len(paths)):
-            fig.gca().text(0.9, 0.9 - p_ix * 0.05, f'█: {info[p_ix]}',
+            fig.gca().text(0.9, 0.9 - p_ix * 0.06, f'█ {info[p_ix]}',
                            fontdict=dict(color=mpl.colors.to_hex(ecm[p_ix % len(ecm)])),
                            horizontalalignment='right')
     if len(title):
