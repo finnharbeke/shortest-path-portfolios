@@ -67,7 +67,7 @@ class Portfolio:
         subset_costs = costs[paths[0]]
         subset_scores = [subset_costs.mean()]
         for j in range(1, k):
-            subset_scores = np.minimum(subset_costs, costs[paths[j]])
+            subset_costs = np.minimum(subset_costs, costs[paths[j]])
             subset_scores.append(subset_costs.mean())
 
         subset_ratios = [sc / p._opt - 1 for sc in subset_scores]
