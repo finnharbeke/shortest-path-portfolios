@@ -67,7 +67,7 @@ class Portfolio:
         subset_costs = costs[paths[0]]
         subset_scores = [subset_costs.mean()]
         for j in range(1, k):
-            subset_costs = np.minimum(subset_costs, costs[paths[j]])
+            subset_costs = np.minimum(subset_costs, costs[paths[max(j, len(paths)-1)]])
             subset_scores.append(subset_costs.mean())
 
         subset_ratios = [sc / p._opt - 1 for sc in subset_scores]
@@ -117,4 +117,4 @@ if __name__ == "__main__":
     for _, (u, v) in pbar:
         pbar.write(f'{u} -> {v}')
         p = Portfolio.most_frequent(g, u, v, k=8)
-        p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
+        p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
