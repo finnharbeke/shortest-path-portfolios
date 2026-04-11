@@ -4,7 +4,7 @@ import re
 class Path:
     @staticmethod
     def is_path(path: str, graph: Graph | None = None):
-        pattern = r'[a|v]\d+(-\d+)+'
+        pattern = r'(v\d+(-\d+)+)|(a\d+(-\d+)*)'
         if graph is None:
             return re.match(pattern, path)
         if not re.match(pattern, path):
