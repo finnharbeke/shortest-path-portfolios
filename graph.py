@@ -21,6 +21,7 @@ class Graph:
         self.arcs = [] # arcs of form (u in 0...n-1, v in 0...n-1)
         self.out_arcs = [] # list of outgoing arcs (a in 0...m-1)
         self.in_arcs = []
+        self.name = None
 
     def build_out_in(self):
         self.out_arcs = []
@@ -44,6 +45,7 @@ class Graph:
         g.n = len(g.v_labels)
         g.m = len(g.arcs)
         g.build_out_in()
+        g.name = city
         return g
     
     def __repr__(self):

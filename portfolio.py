@@ -1,3 +1,6 @@
+import random
+import hashlib
+import inspect
 import os
 import pandas as pd
 import functools
@@ -9,10 +12,14 @@ from path import Path
 import draw
 
 class Portfolio:
-    def __init__(self, graph: Graph, paths: list[str], method='',
+
+    CACHE = './cache/'
+
+    def __init__(self, graph: Graph, s: int, t: int, paths: list[str], method='',
                  infos: list[str] | None = None):
         """ paths is a list of path strings """
         self.g = graph
+        self.s, self.t = s, t
         if len(paths) == 0:
             raise ValueError('empty portfolio')
         paths = list(map(functools.partial(Path.to_arc_based, graph=graph), paths))
@@ -20,6 +27,7 @@ class Portfolio:
         self.infos = infos
         self.k = len(paths)
         self.method = method
+        self._impl_hash = ''
 
         self._score = None
         self._opt = None
@@ -44,21 +52,6 @@ class Portfolio:
         self._score = self.costs().min(axis=1).mean()
         return self._score
 
-    def save(self, path):
-        fields = [
-            self.method,
-            self.k,
-            self._score,
-            '[' + ';'.join(self.P) + ']'
-        ]
-        if os.path.exists(path):
-            df = pd.read_csv(path, index_col=0)
-        else:
-            df = pd.DataFrame(columns=['method', 'k', 'cost', 'portfolio'])
-        df.loc[len(df)] = fields
-        df.drop_duplicates(inplace=True)
-        df.to_csv(path)
-
     def draw(self, **kwargs):
         title = f'{self.method} (k = {self.k})'
         if self._score is not None:
@@ -67,8 +60,88 @@ class Portfolio:
                 title += f', +{self._score / self._opt - 1:.2%} to opt'
         draw.draw_paths(self.g, self.P, info=self.infos, title=title, **kwargs)
 
+    def _to_cache(self, cache=CACHE):
+        fp = Portfolio._cache_file(self.g, cache)
+        fields = [
+            self.s, self.t,
+            self.method,
+            self._impl_hash,
+            self.k,
+            self._score if self._score is not None else np.nan,
+            self._score / self._opt if (self._opt is not None and self._score is not None) else np.nan,
+            '[' + ';'.join(self.P) + ']',
+            '[' + ';;'.join(self.infos) + ']' if self.infos is not None else '[]'
+        ]
+        if os.path.exists(fp):
+            df = pd.read_csv(fp, index_col=0)
+        else:
+            df = pd.DataFrame(columns=['s', 't', 'method', 'hash', 'k', 'cost', 'factor', 'portfolio', 'infos'])
+        if len(df) == 0:
+            df.loc[0] = fields
+        else:
+            df.loc[df.index.max()+1] = fields
+        df.drop_duplicates(inplace=True)
+        df.to_csv(fp)
+
     @staticmethod
-    def most_frequent(graph: Graph, s, t, k=5) -> Portfolio:
+    def _hash(func):
+        return hashlib.sha256(
+            inspect.getsource(func).encode()
+        ).hexdigest()
+
+    @staticmethod
+    def _cache_file(graph, cache_dir):
+        if graph.name is None:
+            graph.name = hex(random.randint(0x0fff, 0xf000))[2:]
+        return os.path.join(cache_dir, f'{graph.name}_portfolios.csv')
+
+    @staticmethod
+    def _check_cache(graph: Graph, cache_dir, method, hash, s, t, k, is_chain=False):
+        fp = Portfolio._cache_file(graph, cache_dir)
+        if not os.path.exists(fp):
+            return None
+        pfs = pd.read_csv(fp, index_col=0)
+
+        # check records
+        same_method = (pfs['s'] == s) & (pfs['t'] == t) & (pfs['method'] == method)
+        if is_chain: # can construct portfolio for k, given portfolio for k' > k
+            same_method &= (pfs['k'] >= k)
+        else:
+            same_method &= (pfs['k'] == k)
+        if same_method.sum() == 0:
+            return None
+        same_hash = same_method & (pfs['hash'] == hash)
+        if same_hash.sum() == 0: # record exists but with legacy code, drop
+            pfs.drop(index=pfs.index[same_method], inplace=True)
+            pfs.to_csv(fp)
+            return None
+
+        row = pfs[same_hash].iloc[0]
+        paths = row['portfolio'][1:-1].split(';')
+        infos = row['infos'][1:-1].split(';;')
+        chain_subset = False
+        if k < len(paths):
+            paths = paths[:k]
+            infos = infos[:k]
+            chain_subset = True
+        p = Portfolio(graph, s, t, paths, method=method, infos=infos)
+        if chain_subset:
+            p._score = None
+            p.score()
+            p._to_cache()
+        elif not pd.isna(row['cost']):
+            p._score = row['cost']
+        if not pd.isna(row['factor']) and not pd.isna(row['cost']):
+            p._opt = row['factor'] / row['cost']
+        return p
+
+    @staticmethod
+    def most_frequent(graph: Graph, s, t, k=5, cache=CACHE) -> Portfolio:
+        METHOD = 'most frequent shortest paths'
+        HASH = Portfolio._hash(Portfolio.most_frequent)
+        cached = Portfolio._check_cache(graph, cache, METHOD, HASH, s, t, k, is_chain=True)
+        if cached is not None:
+            return cached
         df = pd.DataFrame(columns=['dist', 'path'])
         for i in range(graph.I):
             df.loc[i] = graph.djikstra(s, t, instance=i, path=True)
@@ -77,25 +150,33 @@ class Portfolio:
         paths = vc.index[:k]
         freqs = vc.iloc[:k]
 
-        p = Portfolio(graph, paths, method='most frequent shortest paths')
-        p._opt = df['dist'].mean()
-        costs = p.costs()
+        pf = Portfolio(graph, s, t, paths, method=METHOD)
+        pf.k = k # in case the portfolio is shorter than k, keep big k as the intention
+        pf._impl_hash = HASH
+        pf._opt = df['dist'].mean()
+        costs = pf.costs()
         subset_costs = costs[paths[0]]
         subset_scores = [subset_costs.mean()]
         for j in range(1, k):
             subset_costs = np.minimum(subset_costs, costs[paths[min(j, len(paths)-1)]])
             subset_scores.append(subset_costs.mean())
 
-        subset_ratios = [sc / p._opt - 1 for sc in subset_scores]
+        subset_ratios = [sc / pf._opt - 1 for sc in subset_scores]
         infos = [f'+{r:.2%} | {f=:.3f}' for r, f in zip(subset_ratios, freqs)]
-        p._score = subset_scores[-1]
-        p.infos = infos
-        return p
+        pf._score = subset_scores[-1]
+        pf.infos = infos
+        pf._to_cache(cache=cache)
+        return pf
 
     @staticmethod
-    def greedy(graph: Graph, s, t, k=5) -> Portfolio:
+    def greedy(graph: Graph, s, t, k=5, cache=CACHE):
+        METHOD = 'greedy'
+        HASH = Portfolio._hash(Portfolio.greedy)
+        cached = Portfolio._check_cache(graph, cache, METHOD, HASH, s, t, k, is_chain=True)
+        if cached is not None:
+            return cached
         ps = list(graph.nx_all_paths(s, t))
-        all_path_portfolio = Portfolio(graph, ps)
+        all_path_portfolio = Portfolio(graph, s, t, ps)
         all_path_costs = all_path_portfolio.costs()
         opt = all_path_costs.min(axis=1).mean()
         expected_cost = all_path_costs.mean()
@@ -111,12 +192,17 @@ class Portfolio:
             difference = -all_path_costs.sub(current_costs, axis=0)
             improvement = difference.clip(lower=0).mean()
             most_improving_path = improvement.index[improvement.argmax()]
+            if improvement[most_improving_path] == 0:
+                break # perfect already
             portfolio.append(most_improving_path)
         costs.append(all_path_costs[portfolio].min(axis=1).mean())
         infos = [f'+{c / opt - 1:.2%}' for c in costs]
-        pf = Portfolio(graph, portfolio, method='greedy', infos=infos)
+        pf = Portfolio(graph, s, t, portfolio, method=METHOD, infos=infos)
+        pf.k = k # in case the portfolio is shorter than k, keep big k as the intention
+        pf._impl_hash = HASH
         pf._score = costs[-1]
         pf._opt = opt
+        pf._to_cache(cache=cache)
         return pf
 
 if __name__ == "__main__":
@@ -124,15 +210,13 @@ if __name__ == "__main__":
 
     pairs = pd.read_csv('pick_pairs/sh_picks.csv')
     pbar = tqdm.tqdm(pairs.iterrows())
-    for _, (u, v) in pbar:
+    for i, (u, v) in pbar:
         pbar.write(f'{u} -> {v}')
         p = Portfolio.greedy(g, u, v, k=8)
         p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
-        p.save(f'portfolios/sh_{u}-{v}')
 
     pbar = tqdm.tqdm(pairs.iterrows())
-    for _, (u, v) in pbar:
+    for i, (u, v) in pbar:
         pbar.write(f'{u} -> {v}')
         p = Portfolio.most_frequent(g, u, v, k=8)
         p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
-        p.save(f'portfolios/sh_{u}-{v}')
