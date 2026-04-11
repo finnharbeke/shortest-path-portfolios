@@ -119,20 +119,22 @@ class Portfolio:
         row = pfs[same_hash].iloc[0]
         paths = row['portfolio'][1:-1].split(';')
         infos = row['infos'][1:-1].split(';;')
-        chain_subset = False
-        if k < len(paths):
+        chaining = False
+        if k != row['k']:
             paths = paths[:k]
             infos = infos[:k]
-            chain_subset = True
+            chaining = True
         p = Portfolio(graph, s, t, paths, method=method, infos=infos)
-        if chain_subset:
+        p.k = k
+        p._impl_hash = row['hash']
+        if not pd.isna(row['factor']) and not pd.isna(row['cost']):
+            p._opt = row['cost'] / row['factor']
+        if chaining:
             p._score = None
             p.score()
-            p._to_cache()
+            p._to_cache(cache=cache_dir)
         elif not pd.isna(row['cost']):
             p._score = row['cost']
-        if not pd.isna(row['factor']) and not pd.isna(row['cost']):
-            p._opt = row['factor'] / row['cost']
         return p
 
     @staticmethod
@@ -184,6 +186,7 @@ class Portfolio:
         shortest_mean_path = expected_cost.index[expected_cost.argmin()]
         portfolio = [shortest_mean_path]
         costs = []
+        ended_early = False
         for _ in range(1, k):
             # add the next k-1
             current_costs = all_path_costs[portfolio].min(axis=1)
@@ -193,9 +196,12 @@ class Portfolio:
             improvement = difference.clip(lower=0).mean()
             most_improving_path = improvement.index[improvement.argmax()]
             if improvement[most_improving_path] == 0:
+                ended_early = True
                 break # perfect already
             portfolio.append(most_improving_path)
-        costs.append(all_path_costs[portfolio].min(axis=1).mean())
+
+        if not ended_early:
+            costs.append(all_path_costs[portfolio].min(axis=1).mean())
         infos = [f'+{c / opt - 1:.2%}' for c in costs]
         pf = Portfolio(graph, s, t, portfolio, method=METHOD, infos=infos)
         pf.k = k # in case the portfolio is shorter than k, keep big k as the intention
@@ -208,15 +214,33 @@ class Portfolio:
 if __name__ == "__main__":
     g = Graph.load()
 
-    pairs = pd.read_csv('pick_pairs/sh_picks.csv')
-    pbar = tqdm.tqdm(pairs.iterrows())
-    for i, (u, v) in pbar:
-        pbar.write(f'{u} -> {v}')
-        p = Portfolio.greedy(g, u, v, k=8)
-        p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
+    # pairs = pd.read_csv('pick_pairs/sh_picks.csv')
+    # pbar = tqdm.tqdm(pairs.iterrows())
+    # for i, (u, v) in pbar:
+    #     pbar.write(f'{u} -> {v}')
+    #     p = Portfolio.greedy(g, u, v, k=8)
+    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
+    #
+    # pbar = tqdm.tqdm(pairs.iterrows())
+    # for i, (u, v) in pbar:
+    #     pbar.write(f'{u} -> {v}')
+    #     p = Portfolio.most_frequent(g, u, v, k=8)
+    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
 
-    pbar = tqdm.tqdm(pairs.iterrows())
-    for i, (u, v) in pbar:
-        pbar.write(f'{u} -> {v}')
-        p = Portfolio.most_frequent(g, u, v, k=8)
-        p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
+    random.seed(77)
+    print('='*50)
+    done = set()
+    pbar = tqdm.tqdm(range(1000))
+    for i in pbar:
+        u, v = 0, 0
+        while (u == v) or (u, v) in done:
+            u = random.randrange(g.n)
+            v = random.randrange(g.n)
+
+        pbar.write(f'{u}-{v}', end=', ' if (i+1) % 10 != 0 else '\n')
+        for k in range(8, 0, -1):
+            Portfolio.greedy(g, u, v, k=k, cache='./cache/random_pairs/')
+            Portfolio.most_frequent(g, u, v, k=k, cache='./cache/random_pairs/')
+
+        done.add((u, v))
+

@@ -34,7 +34,7 @@ class Graph:
             self.in_arcs[v].append(a)
 
     @staticmethod
-    def load(city='sh', dir_='data'): # sh, la or sz
+    def load(city='sh', dir_='data') -> Graph: # sh, la or sz
         g = Graph()
         arcs = np.loadtxt(os.path.join(dir_, f'{city}_arcs.csv'), delimiter=',', dtype=int).tolist()
         g.arcs = [tuple(arc) for arc in arcs]
