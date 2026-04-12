@@ -214,18 +214,20 @@ class Portfolio:
 if __name__ == "__main__":
     g = Graph.load()
 
-    # pairs = pd.read_csv('pick_pairs/sh_picks.csv')
-    # pbar = tqdm.tqdm(pairs.iterrows())
-    # for i, (u, v) in pbar:
-    #     pbar.write(f'{u} -> {v}')
-    #     p = Portfolio.greedy(g, u, v, k=8)
-    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
-    #
-    # pbar = tqdm.tqdm(pairs.iterrows())
-    # for i, (u, v) in pbar:
-    #     pbar.write(f'{u} -> {v}')
-    #     p = Portfolio.most_frequent(g, u, v, k=8)
-    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
+    pairs = pd.read_csv('pick_pairs/sh_picks.csv')
+    pbar = tqdm.tqdm(pairs.iterrows())
+    for i, (u, v) in pbar:
+        pbar.write(f'{u} -> {v}')
+        for k in range(8, 0, -1):
+            p = Portfolio.greedy(g, u, v, k=k)
+        # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
+
+    pbar = tqdm.tqdm(pairs.iterrows())
+    for i, (u, v) in pbar:
+        pbar.write(f'{u} -> {v}')
+        for k in range(8, 0, -1):
+            p = Portfolio.most_frequent(g, u, v, k=k)
+        # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
 
     random.seed(77)
     print('='*50)
@@ -233,7 +235,7 @@ if __name__ == "__main__":
     pbar = tqdm.tqdm(range(1000))
     for i in pbar:
         u, v = 0, 0
-        while (u == v) or (u, v) in done:
+        while (u == v) or (u, v) in done or g.djikstra(u, v) > 1e8:
             u = random.randrange(g.n)
             v = random.randrange(g.n)
 
