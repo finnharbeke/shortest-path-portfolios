@@ -177,7 +177,9 @@ class Portfolio:
         cached = Portfolio._check_cache(graph, cache, METHOD, HASH, s, t, k, is_chain=True)
         if cached is not None:
             return cached
-        ps = list(graph.nx_all_paths(s, t))
+        ps = []
+        for p in tqdm.tqdm(graph.my_all_paths(s, t)):
+            ps.append(p)
         all_path_portfolio = Portfolio(graph, s, t, ps)
         all_path_costs = all_path_portfolio.costs()
         opt = all_path_costs.min(axis=1).mean()
@@ -212,27 +214,25 @@ class Portfolio:
         return pf
 
 if __name__ == "__main__":
-    g = Graph.load()
+    g = Graph.load(city='la')
 
-    pairs = pd.read_csv('pick_pairs/sh_picks.csv')
-    pbar = tqdm.tqdm(pairs.iterrows())
-    for i, (u, v) in pbar:
-        pbar.write(f'{u} -> {v}')
-        for k in range(8, 0, -1):
-            p = Portfolio.greedy(g, u, v, k=k)
-        # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
-
-    pbar = tqdm.tqdm(pairs.iterrows())
-    for i, (u, v) in pbar:
-        pbar.write(f'{u} -> {v}')
-        for k in range(8, 0, -1):
-            p = Portfolio.most_frequent(g, u, v, k=k)
-        # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
-
-    random.seed(77)
+    # for i, (u, v) in pbar:
+    #     pbar.write(f'{u} -> {v}')
+    #     for k in range(8, 0, -1):
+    #         p = Portfolio.greedy(g, u, v, k=k)
+    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
+    #
+    # pbar = tqdm.tqdm(pairs.iterrows())
+    # for i, (u, v) in pbar:
+    #     pbar.write(f'{u} -> {v}')
+    #     for k in range(8, 0, -1):
+    #         p = Portfolio.most_frequent(g, u, v, k=k)
+    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
+    #
+    random.seed(55)
     print('='*50)
     done = set()
-    pbar = tqdm.tqdm(range(1000))
+    pbar = tqdm.tqdm(range(500))
     for i in pbar:
         u, v = 0, 0
         while (u == v) or (u, v) in done or g.djikstra(u, v) > 1e8:
@@ -241,7 +241,7 @@ if __name__ == "__main__":
 
         pbar.write(f'{u}-{v}', end=', ' if (i+1) % 10 != 0 else '\n')
         for k in range(8, 0, -1):
-            Portfolio.greedy(g, u, v, k=k, cache='./cache/random_pairs/')
+            # Portfolio.greedy(g, u, v, k=k, cache='./cache/random_pairs/')
             Portfolio.most_frequent(g, u, v, k=k, cache='./cache/random_pairs/')
 
         done.add((u, v))

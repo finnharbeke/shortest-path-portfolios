@@ -1,11 +1,13 @@
+from collections import deque
 import pandas as pd
 import numpy as np
 import os
 import time
 from heapdict import heapdict
 import multiprocessing
-import itertools
 import networkx as nx
+import functools
+import tqdm
 
 class Graph:
     def __init__(self):
@@ -128,10 +130,12 @@ class Graph:
 
     def djikstra_all_pairs(self, instance=0):
         all_paths = []
+        all_dists = []
         for s in range(self.n):
-            _, paths = self.djikstra(s, instance=instance, path=True)
+            dists, paths = self.djikstra(s, instance=instance, path=True)
             all_paths.append(paths)
-        return np.concatenate(all_paths)
+            all_dists.append(dists)
+        return np.concatenate(all_dists), np.concatenate(all_paths)
 
     def nx_all_paths(self, source, target):
         nxg = nx.DiGraph()
@@ -142,23 +146,44 @@ class Graph:
         paths = map(to_format, paths)
         return paths
 
+    def my_all_paths(self, source, target):
+        stack = deque()
+        stack.append(deque([source]))
+        while len(stack):
+            path = stack.pop()
+            u = path[-1]
+            if u == target:
+                yield 'v' + '-'.join(str(v) for v in path)
+            for a in self.out_arcs[u]:
+                v = self.arcs[a][1]
+                if not v in path:
+                    to_v = path.copy()
+                    to_v.append(v)
+                    stack.append(to_v)
+
 if __name__ == "__main__":
-    g = Graph.load('sh')
+    g = Graph.load('la')
 
     start = time.time()
     g.djikstra(6, path=True)
     # ~0.004s
     print(f'time for one source, all paths, {time.time() - start:.3f}s')
     start = time.time()
-    g.djikstra_all_paths()
+    g.djikstra_all_pairs()
     # ~0.077s
-    print(f'time for all sources, all paths, {time.time() - start:.3f}s')
-    
+    t = time.time() - start
+    print(f'time for all sources, all paths, {t:.3f}s')
+    print(f'estimated time for all instances: {t*g.I:.0f}s')
+
     start = time.time()
     pool = multiprocessing.Pool(4)
-    results = pool.starmap(Graph.djikstra_all_pairs, itertools.product([g], range(g.I)))
-    paths = pd.DataFrame(np.vstack(results), columns=[f'{u}-{v}' for u in range(g.n) for v in range(g.n)])
+
+    results = tqdm.tqdm(pool.imap(functools.partial(Graph.djikstra_all_pairs, g), range(g.I)), total=g.I)
+    dists_out, paths_out = zip(*results)
+    paths = pd.DataFrame(np.vstack(paths_out), columns=[f'{u}-{v}' for u in range(g.n) for v in range(g.n)])
+    dists = np.vstack(dists_out)
 
     t_a = time.time() - start
     print(f'time for all instances, {t_a:.3f}s, {t_a:.0f}s / {g.I} = {t_a / g.I:.3f}s')
-    paths.to_csv('pick_pairs/sh_paths.csv')
+    paths.to_csv('pick_pairs/la_paths.csv')
+    np.save('pick_pairs/la_dists.npy', dists)
