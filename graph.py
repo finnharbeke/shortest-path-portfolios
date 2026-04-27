@@ -24,6 +24,7 @@ class Graph:
         self.out_arcs = [] # list of outgoing arcs (a in 0...m-1)
         self.in_arcs = []
         self.name = None
+        self.w_mean = None
 
     def build_out_in(self):
         self.out_arcs = []
@@ -53,6 +54,11 @@ class Graph:
     def __repr__(self):
         return f'<{self.__class__.__name__}({self.n}, {self.m}) at {hex(id(self))}>'
 
+    def mean_weights(self):
+        if self.w_mean is None:
+            self.w_mean = self.weights.mean()
+        return self.w_mean
+
     def floyd_warshall(self, instances='all'):
         if instances == 'all':
             distance = np.zeros((self.I, self.n, self.n))
@@ -77,9 +83,10 @@ class Graph:
 
         return distance
 
-    def djikstra(self, s, t=None, instance=0, path=False):
+    def djikstra(self, s, t=None, instance=0, path=False, penalties=None):
         """ returns distance array from s, if no t given, other wise dist(s, t)
-            if path is True it returns tuple with path(s) 
+            if path is True it returns tuple with path(s)
+            if instance = None is passed it takes the average weight
         """
         heap = heapdict()
         found = set()
@@ -112,7 +119,12 @@ class Graph:
                 neighbour = self.arcs[a][1]
                 if neighbour in found:
                     continue
-                w = self.weights.loc[instance, a]
+                if instance is None:
+                    w = self.mean_weights()[a]
+                else:
+                    w = self.weights.loc[instance, a]
+                if penalties is not None:
+                    w *= penalties[a]
 
                 if neighbour not in heap or heap[neighbour] > d + w:
                     heap[neighbour] = d + w

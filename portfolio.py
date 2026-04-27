@@ -171,15 +171,13 @@ class Portfolio:
         return pf
 
     @staticmethod
-    def greedy(graph: Graph, s, t, k=5, cache=CACHE):
+    def greedy(graph: Graph, s, t, k=5, cache=CACHE) -> Portfolio:
         METHOD = 'greedy'
         HASH = Portfolio._hash(Portfolio.greedy)
         cached = Portfolio._check_cache(graph, cache, METHOD, HASH, s, t, k, is_chain=True)
         if cached is not None:
             return cached
-        ps = []
-        for p in tqdm.tqdm(graph.my_all_paths(s, t)):
-            ps.append(p)
+        ps = list(graph.nx_all_paths(s, t))
         all_path_portfolio = Portfolio(graph, s, t, ps)
         all_path_costs = all_path_portfolio.costs()
         opt = all_path_costs.min(axis=1).mean()
@@ -213,6 +211,27 @@ class Portfolio:
         pf._to_cache(cache=cache)
         return pf
 
+    @staticmethod
+    def penalised_djikstra(graph: Graph, s, t, penalty=1.2, k=5, cache=CACHE) -> Portfolio:
+        METHOD = f'penalised djikstra({penalty})'
+        HASH = Portfolio._hash(Portfolio.penalised_djikstra)
+        cached = Portfolio._check_cache(graph, cache, METHOD, HASH, s, t, k, is_chain=True)
+        if cached is not None:
+            return cached
+        penalties = np.ones(graph.weights.shape[1])
+        portfolio = []
+        infos = []
+        for _ in range(k):
+            d, path = graph.djikstra(s, t, path=True, instance=None, penalties=penalties)
+            portfolio.append(path)
+            infos.append(f'{d:.3f}')
+            penalties[Path.to_integers(path)] *= penalty
+
+        pf = Portfolio(graph, s, t, portfolio, method=METHOD, infos=infos)
+        pf._impl_hash = HASH
+        pf._to_cache(cache=cache)
+        return pf
+
 if __name__ == "__main__":
     g = Graph.load(city='la')
 
@@ -232,7 +251,7 @@ if __name__ == "__main__":
     random.seed(55)
     print('='*50)
     done = set()
-    pbar = tqdm.tqdm(range(500))
+    pbar = tqdm.tqdm(range(1000))
     for i in pbar:
         u, v = 0, 0
         while (u == v) or (u, v) in done or g.djikstra(u, v) > 1e8:
@@ -242,7 +261,15 @@ if __name__ == "__main__":
         pbar.write(f'{u}-{v}', end=', ' if (i+1) % 10 != 0 else '\n')
         for k in range(8, 0, -1):
             # Portfolio.greedy(g, u, v, k=k, cache='./cache/random_pairs/')
-            Portfolio.most_frequent(g, u, v, k=k, cache='./cache/random_pairs/')
+            mf = Portfolio.most_frequent(g, u, v, k=k, cache='./cache/random_pairs/')
+            for lmb in [1.05, 1.1, 1.2, 1.3, 1.4]:
+                dj = Portfolio.penalised_djikstra(g, u, v, penalty=lmb, k=k, cache='./cache/random_pairs/')
+                dj.score()
+                dj._opt = mf._opt
+                dj._to_cache(cache="./cache/random_pairs/")
 
         done.add((u, v))
+
+    p = Portfolio.penalised_djikstra(g, 37, 17)
+    print(p)
 
