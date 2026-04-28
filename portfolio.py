@@ -24,6 +24,7 @@ class Portfolio:
             raise ValueError('empty portfolio')
         paths = list(map(functools.partial(Path.to_arc_based, graph=graph), paths))
         self.P = paths
+        self.iP = list(map(Path.to_integers, self.P))
         self.infos = infos
         self.k = len(paths)
         self.method = method
@@ -37,6 +38,20 @@ class Portfolio:
             return f'<{self.__class__.__name__}(k={self.k}, c={self._score / self._opt:.3%}) at {hex(id(self))}>'
 
         return f'<{self.__class__.__name__}(k={self.k}) at {hex(id(self))}>'
+
+    def compute(self, instance, path=False) -> tuple[float, str] | float:
+        best = ''
+        cost = -1
+        for ixs, p in zip(self.iP, self.P):
+            p_cost = self.g.weights.loc[instance, ixs].sum()
+            if cost < 0 or p_cost < cost:
+                cost = p_cost
+                if path:
+                    best = p
+        if path:
+            return cost, best
+        else:
+            return cost
 
     def costs(self):
         costs = pd.DataFrame(columns=self.P)

@@ -11,6 +11,7 @@ from path import Path
 
 cm = mpl.colormaps['Spectral']
 ecm = mpl.color_sequences['Set1']
+scm = mpl.colormaps['viridis']
 
 def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     nxg = nx.DiGraph()
@@ -25,6 +26,25 @@ def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     else:
         plt.savefig(savefig, dpi=300)
     plt.close()
+
+def draw_edge_weights(g: Graph, weights, colorize, savefig, figsize=(8, 5)):
+    nxg = nx.MultiDiGraph()
+    nxg.add_edges_from(g.arcs)
+    edge_color = []
+    ma, mi = max(weights), min(weights)
+    norm = lambda x: (x - mi) / (ma - mi)
+    for (u, v) in list(nxg.edges()):
+        a = g.arcs.index((u, v))
+        w = weights[a]
+        col = mpl.colors.to_hex(scm(norm(w)))
+        if a not in colorize:
+            col += '22'
+        edge_color.append(col)
+
+    fig = plt.figure(figsize=figsize)
+    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=9, ax=fig.gca(), node_color='#aaa', edge_color=edge_color)
+    plt.tight_layout()
+    plt.savefig(savefig, dpi=300)
 
 def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''):
     """ takes paths as list of strings """
