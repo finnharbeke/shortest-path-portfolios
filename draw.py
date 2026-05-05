@@ -2,6 +2,7 @@ import functools
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import seaborn as sns
 import pandas as pd
 import numpy as np
 import folium
@@ -11,7 +12,7 @@ from path import Path
 
 cm = mpl.colormaps['Spectral']
 ecm = mpl.color_sequences['Set1']
-scm = mpl.colormaps['viridis']
+scm = sns.color_palette('flare', as_cmap=True)
 
 def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     nxg = nx.DiGraph()
@@ -30,20 +31,26 @@ def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
 def draw_edge_weights(g: Graph, weights, colorize, savefig, figsize=(8, 5)):
     nxg = nx.MultiDiGraph()
     nxg.add_edges_from(g.arcs)
+    ma, mi = max(weights[colorize]), min(weights[colorize])
+    norm = mpl.colors.Normalize(mi, ma)
     edge_color = []
-    ma, mi = max(weights), min(weights)
-    norm = lambda x: (x - mi) / (ma - mi)
+    edge_width = []
     for (u, v) in list(nxg.edges()):
         a = g.arcs.index((u, v))
         w = weights[a]
-        col = mpl.colors.to_hex(scm(norm(w)))
         if a not in colorize:
-            col += '22'
-        edge_color.append(col)
+            edge_color.append('#1112')
+            edge_width.append(1)
+        else:
+            edge_color.append(
+                mpl.colors.to_hex(scm(norm(w)))
+            )
+            edge_width.append(3)
 
     fig = plt.figure(figsize=figsize)
-    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=9, ax=fig.gca(), node_color='#aaa', edge_color=edge_color)
-    plt.tight_layout()
+    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=6, node_size=100, ax=fig.gca(), node_color='#aaa', edge_color=edge_color, width=edge_width)
+    fig.colorbar(mpl.cm.ScalarMappable(norm, scm), ax=plt.gca(), location='bottom', pad=0, fraction=0.05, aspect=80, label='edge weight')
+    fig.tight_layout()
     plt.savefig(savefig, dpi=300)
 
 def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''):
