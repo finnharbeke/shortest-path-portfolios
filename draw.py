@@ -12,6 +12,7 @@ from path import Path
 
 cm = mpl.colormaps['Spectral']
 ecm = mpl.color_sequences['Set1']
+ecm2 = mpl.color_sequences['Set2']
 scm = sns.color_palette('flare', as_cmap=True)
 
 def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
@@ -28,10 +29,13 @@ def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
         plt.savefig(savefig, dpi=300)
     plt.close()
 
-def draw_edge_weights(g: Graph, weights, colorize, savefig, figsize=(8, 5)):
+def draw_edge_weights(g: Graph, weights, colorize, st, savefig=None, mima=None, ax=None, figsize=(8, 5)):
     nxg = nx.MultiDiGraph()
     nxg.add_edges_from(g.arcs)
-    ma, mi = max(weights[colorize]), min(weights[colorize])
+    if mima is None:
+        ma, mi = max(weights[colorize]), min(weights[colorize])
+    else:
+        mi, ma = mima
     norm = mpl.colors.Normalize(mi, ma)
     edge_color = []
     edge_width = []
@@ -46,14 +50,27 @@ def draw_edge_weights(g: Graph, weights, colorize, savefig, figsize=(8, 5)):
                 mpl.colors.to_hex(scm(norm(w)))
             )
             edge_width.append(3)
+    node_color = []
+    for u in nxg.nodes():
+        if u == st[0]:
+            node_color.append(ecm2[0])
+        elif u == st[1]:
+            node_color.append(ecm2[1])
+        else:
+            node_color.append('#aaa')
 
-    fig = plt.figure(figsize=figsize)
-    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=6, node_size=100, ax=fig.gca(), node_color='#aaa', edge_color=edge_color, width=edge_width)
-    fig.colorbar(mpl.cm.ScalarMappable(norm, scm), ax=plt.gca(), location='bottom', pad=0, fraction=0.05, aspect=80, label='edge weight')
-    fig.tight_layout()
-    plt.savefig(savefig, dpi=300)
+    if ax is None:
+        ax = plt.figure(figsize=figsize).gca()
+    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)},
+                         font_size=6, node_size=100, node_color=node_color,
+                         edge_color=edge_color, width=edge_width,
+                         ax=ax)
+    plt.colorbar(mpl.cm.ScalarMappable(norm, scm), ax=ax,
+                 location='bottom', pad=0, fraction=0.05, aspect=80)
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300)
 
-def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''):
+def draw_paths(g: Graph, paths, color_nodes=True, info=None, ax=None, savefig=None, figsize=(8,5), title='', **kwargs):
     """ takes paths as list of strings """
     nxg = nx.MultiDiGraph()
     paths = list(map(functools.partial(Path.to_arc_based, graph=g), paths))
@@ -80,25 +97,40 @@ def draw_paths(g: Graph, paths, info=None, savefig=None, figsize=(8,5), title=''
 
     connectionstyle = [f"arc3,rad={r}" for r in np.linspace(.1, 2, 20)]
 
-    fig = plt.figure(figsize=figsize)
-    node_color = [cm(u / (g.n - 1)) for u in list(nxg)]
+    if ax is None:
+        ax = plt.figure(figsize=figsize).gca()
+    node_color = [cm(u / (g.n - 1)) for u in list(nxg)] if color_nodes else ['#aaa'] * g.n
     node_color = list(map(mpl.colors.to_hex, node_color))
-    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=9, ax=fig.gca(), node_color=node_color, edge_color=edge_color, connectionstyle=connectionstyle)
+    my_kwargs = dict(labels={u: u for u in range(g.n)},
+                     font_size=9, node_color=node_color,
+                     edge_color=edge_color, connectionstyle=connectionstyle)
+    my_kwargs.update(kwargs)
+    nx.draw_kamada_kawai(nxg, ax=ax, **my_kwargs)
 
     # write little legend
     if info is not None:
         for p_ix in range(len(paths)):
-            fig.gca().text(0.9, 0.9 - p_ix * 0.06, f'█ {info[p_ix]}',
+            ax.text(0.9, 0.9 - p_ix * 0.06, f'█ {info[p_ix]}',
                            fontdict=dict(color=mpl.colors.to_hex(ecm[p_ix % len(ecm)])),
                            horizontalalignment='right')
     if len(title):
-        plt.title(title)
+        ax.set_title(title)
 
-    plt.tight_layout()
-    if savefig is None:
-        plt.show()
-    else:
+    if savefig is not None:
         plt.savefig(savefig, dpi=300)
+
+def draw_partition(ew_kwargs, p_kwargs, bar_kwargs, savefig, title):
+    ### plot layout, left big, edge weights, top right paths, bottom right bars of path costs
+
+    fig, axes = plt.subplot_mosaic([['a', 'b'], ['a', 'c']], width_ratios=[2, 1])
+    draw_edge_weights(**ew_kwargs, ax=axes['a'])
+    draw_paths(**p_kwargs, ax=axes['b'], color_nodes=False)
+    paths = range(len(bar_kwargs['iP']))
+    costs = [bar_kwargs['weights'][p].sum() for p in bar_kwargs['iP']]
+    sns.barplot(x=paths, y=costs, hue=paths, palette=ecm, ax=axes['c'])
+    plt.title(title)
+    fig.tight_layout()
+    fig.savefig(savefig, dpi=300)
 
 def draw_coords(g, cds_file):
     cds = pd.read_csv(cds_file, index_col=0)

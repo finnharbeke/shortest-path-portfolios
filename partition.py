@@ -30,18 +30,34 @@ if __name__ == "__main__":
     s, t = mf_vs_greedy.loc[ix, ['s', 't']]
     relevant = pfs[(pfs['s'] == s) & (pfs['t'] == t)].sort_values('method')
     gr_row, mf_row = relevant.iloc[0], relevant.iloc[1]
-    
+
     g = Graph.load('sh')
     greedy = Portfolio(g, s, t, paths=gr_row['portfolio'][1:-1].split(';'), infos=gr_row['infos'][1:-1].split(';;'))
     mfsp = Portfolio(g, s, t, paths=mf_row['portfolio'][1:-1].split(';'), infos=mf_row['infos'][1:-1].split(';;'))
 
     draw.draw_edge_weights(g, g.weights.mean(), [a for p in greedy.iP for a in p], './graph_drawings/sh/part.png')
 
-    winner = np.argmin(greedy.costs(), axis=1)
+    winner = np.argmin(mfsp.costs(), axis=1)
+    mi = 1000
+    ma = 0
     for i in range(greedy.k):
         where = g.weights.index[winner == i]
-        w = g.weights.loc[where]
-        draw.draw_edge_weights(g, w.mean(), [a for p in greedy.iP for a in p], f'./graph_drawings/sh/part{i}.png')
+        w = g.weights.loc[where].mean()
+        mi = min([mi, (w[[a for p in mfsp.iP for a in p]]).min()])
+        ma = max([mi, (w[[a for p in mfsp.iP for a in p]]).max()])
+
+    for i in range(greedy.k):
+        b = winner == i
+        where = g.weights.index[b]
+        w = g.weights.loc[where].mean()
+        draw.draw_edge_weights(g, w, [a for p in mfsp.iP for a in p], (s, t), f'./graph_drawings/sh/mfpart{i}.png')
+        draw.draw_partition(
+            dict(g=g, weights=w, st=(s, t), mima=(mi, ma), colorize=[a for p in greedy.iP for a in p]),
+            dict(g=g, paths=mfsp.P, node_size=20, font_size=3),
+            dict(weights=w, iP=mfsp.iP),
+            f'./graph_drawings/sh/mfpartition{i}.png',
+            f'{b.mean():.2%}'
+        )
 
 
     # todo: partition instances and draw edge weights for each mean
