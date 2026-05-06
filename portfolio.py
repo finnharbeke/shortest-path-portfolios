@@ -55,8 +55,7 @@ class Portfolio:
 
     def costs(self):
         costs = pd.DataFrame(columns=self.P)
-        int_P = map(Path.to_integers, self.P)
-        for ixs, path in zip(int_P, self.P):
+        for ixs, path in zip(self.iP, self.P):
             p_costs = self.g.weights[ixs].sum(axis=1)
             costs[path] = p_costs
         return costs

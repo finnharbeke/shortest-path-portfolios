@@ -2,6 +2,7 @@ import draw
 from portfolio import Portfolio
 from graph import Graph
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -34,10 +35,14 @@ if __name__ == "__main__":
     greedy = Portfolio(g, s, t, paths=gr_row['portfolio'][1:-1].split(';'), infos=gr_row['infos'][1:-1].split(';;'))
     mfsp = Portfolio(g, s, t, paths=mf_row['portfolio'][1:-1].split(';'), infos=mf_row['infos'][1:-1].split(';;'))
 
-    print(g.weights.mean())
-    print(max(g.weights.mean()))
-    print(min(g.weights.mean()))
     draw.draw_edge_weights(g, g.weights.mean(), [a for p in greedy.iP for a in p], './graph_drawings/sh/part.png')
+
+    winner = np.argmin(greedy.costs(), axis=1)
+    for i in range(greedy.k):
+        where = g.weights.index[winner == i]
+        w = g.weights.loc[where]
+        draw.draw_edge_weights(g, w.mean(), [a for p in greedy.iP for a in p], f'./graph_drawings/sh/part{i}.png')
+
 
     # todo: partition instances and draw edge weights for each mean
 
