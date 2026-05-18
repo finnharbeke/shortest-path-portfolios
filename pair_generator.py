@@ -55,7 +55,6 @@ class DistanceBucketingPG(PairGenerator):
         for j in range(1, k):
             self.cuts.append(min_d + j * interval)
 
-        print(self.cuts)
         self.sub_generator = UniformDistinctPG(self.g)
         self.buckets_used = set()
 

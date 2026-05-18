@@ -1,64 +1,48 @@
-import draw
-from portfolio import Portfolio
+from tqdm import tqdm
+from pair_generator import DistanceBucketingPG
 from graph import Graph
+from portfolio import Portfolio
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
+
+class Partition:
+    """a partition of instances given p Portfolios,
+        usually with all of them being size k
+        such that this partition is size k^p"""
+
+    # abc
+    portfolio_wise_labels = ''.join(
+        chr(i) for i in range(ord('a'), ord('z')+1)
+    )
+
+    def __init__(self, g: Graph):
+        self.p = 0
+        self.g = g
+        self.instances = pd.DataFrame(index=self.g.weights.index)
+        self.instances['partition'] = ''
+
+    def __repr__(self):
+        vc = self.instances['partition'].value_counts()
+        items = f'\n'.join(f"'{key}': {count: 5d} #"
+            for key, count in vc.items()
+        )
+        return f'Partition at {id(self):x} with elements\n{items}'
+
+    def add(self, portfolio: Portfolio):
+        c = portfolio.costs()
+        winner = np.argmin(c, axis=1)
+        letter = np.array(list(Partition.portfolio_wise_labels))[winner]
+        self.instances['partition'] += letter
 
 if __name__ == "__main__":
+    g = Graph.load()
+    part = Partition(g)
+    print(part)
 
-    k = 3
-
-    pfs = pd.read_csv('./cache/random_pairs/sh_portfolios.csv', index_col = 0)
-    pfs.drop(pfs.index[~(pfs['k'] == 3)], inplace=True)
-    pfs.drop(pfs.index[~pfs['method'].isin(['greedy', 'most frequent shortest paths'])], inplace=True)
-
-    mf_vs_greedy = pd.DataFrame(columns=['greedy', 'mfsp', 's', 't'])
-    for (s, t), group in pfs.groupby(['s', 't']):
-        # print(group)
-        greedy = group[(group['method'] == 'greedy')].iloc[0]
-        mfsp = group[~(group['method'] == 'greedy')].iloc[0]
-        mf_vs_greedy.loc[len(mf_vs_greedy)] = dict(greedy = greedy['factor'], mfsp = mfsp['factor'], s=s, t=t)
-
-    mf_vs_greedy['diff'] = mf_vs_greedy['mfsp'] - mf_vs_greedy['greedy'] 
-
-    print(mf_vs_greedy[mf_vs_greedy['diff'] > 0.004])
-
-    ix = 78
-    print(mf_vs_greedy.loc[ix])
-    s, t = mf_vs_greedy.loc[ix, ['s', 't']]
-    relevant = pfs[(pfs['s'] == s) & (pfs['t'] == t)].sort_values('method')
-    gr_row, mf_row = relevant.iloc[0], relevant.iloc[1]
-
-    g = Graph.load('sh')
-    greedy = Portfolio(g, s, t, paths=gr_row['portfolio'][1:-1].split(';'), infos=gr_row['infos'][1:-1].split(';;'))
-    mfsp = Portfolio(g, s, t, paths=mf_row['portfolio'][1:-1].split(';'), infos=mf_row['infos'][1:-1].split(';;'))
-
-    draw.draw_edge_weights(g, g.weights.mean(), [a for p in greedy.iP for a in p], './graph_drawings/sh/part.png')
-
-    winner = np.argmin(mfsp.costs(), axis=1)
-    mi = 1000
-    ma = 0
-    for i in range(greedy.k):
-        where = g.weights.index[winner == i]
-        w = g.weights.loc[where].mean()
-        mi = min([mi, (w[[a for p in mfsp.iP for a in p]]).min()])
-        ma = max([mi, (w[[a for p in mfsp.iP for a in p]]).max()])
-
-    for i in range(greedy.k):
-        b = winner == i
-        where = g.weights.index[b]
-        w = g.weights.loc[where].mean()
-        draw.draw_edge_weights(g, w, [a for p in mfsp.iP for a in p], (s, t), f'./graph_drawings/sh/mfpart{i}.png')
-        draw.draw_partition(
-            dict(g=g, weights=w, st=(s, t), mima=(mi, ma), colorize=[a for p in greedy.iP for a in p]),
-            dict(g=g, paths=mfsp.P, node_size=20, font_size=3),
-            dict(weights=w, iP=mfsp.iP),
-            f'./graph_drawings/sh/mfpartition{i}.png',
-            f'{b.mean():.2%}'
-        )
-
-
-    # todo: partition instances and draw edge weights for each mean
+    sampler = DistanceBucketingPG(g)
+    for _ in tqdm(range(5)):
+        u, v = next(sampler)
+        pf = Portfolio.most_frequent(g, u, v, k=3)
+        part.add(pf)
+        print(part)
 
