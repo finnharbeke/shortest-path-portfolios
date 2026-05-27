@@ -1,3 +1,5 @@
+import time
+from kmedoids import KMedoids
 import itertools
 from tqdm import tqdm
 from pair_generator import DistanceBucketingPG
@@ -25,6 +27,7 @@ class InducedPartition:
         self.p = 0
         self.g = g
         self.instances = pd.DataFrame(index=self.g.weights.index)
+        self.inst_vectors = np.zeros((self.g.I, 0))
 
     def __repr__(self):
         text = f'Partition at {id(self):x} with elements'
@@ -41,17 +44,16 @@ class InducedPartition:
         winner = np.argmin(c, axis=1)
         letter = np.array(list(InducedPartition.portfolio_wise_labels))[winner]
         self.instances[f'{portfolio.s}-{portfolio.t}'] = letter
+        self.inst_vectors = np.hstack([self.inst_vectors, winner.reshape((-1, 1))])
         self.p += 1
 
     def cluster(self, k=3):
-        kmodes = KModes(n_clusters=k)
-        kmodes.fit_predict(self.instances)
-        # print(kmodes.cluster_centroids_)
-        # print(kmodes.cost_)
-        # print(kmodes.n_iter_)
-        # print(kmodes.labels_)
-        # print(pd.Series(kmodes.labels_).value_counts())
-        return InstancePartition(self.g, kmodes.labels_)
+        dists = np.zeros((self.g.I, self.g.I))
+        for i in range(self.g.I):
+            dists[:, i] = (self.inst_vectors != self.inst_vectors[i]).sum(axis=1)
+        kmedoids = KMedoids(n_clusters=k)
+        kmedoids.fit_predict(dists)
+        return InstancePartition(self.g, kmedoids.labels_)
 
 class InstancePartition:
     def __init__(self, g: Graph, labels: np.ndarray):
@@ -103,8 +105,8 @@ if __name__ == "__main__":
         dists = pd.DataFrame(dists)
         dists.to_csv('./cache/clustering_dists_temp.csv')
 
-    dists = pd.read_csv('./cache/clustering_dists.csv')
-    sns.stripplot(dists, y='d', x='k', native_scale=True, jitter=.4, s=3)
+    dists = pd.read_csv('./cache/clustering_dists_temp.csv')
+    sns.stripplot(dists, y='d', x='k', native_scale=True, jitter=.2, s=3)
     sns.lineplot(dists, y='d', x='k')
     plt.savefig('./figures/clustering_distances.png')
 
