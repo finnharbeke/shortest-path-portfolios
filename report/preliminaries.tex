@@ -1,0 +1,39 @@
+\section{Preliminaries}
+
+Let $G = (V, E)$ be a directed graph with $n = |V|$ vertices and $m = |E|$ edges. We consider a stochastic setting in which the edge costs are random. Let $\mathcal C$ be a set of cost functions from $E$ to $\mathbb R^{\ge 0}$ and $\mathcal D$ a distribution over them. So, $c \sim \mathcal D$ is a realised cost function assigning non-negative real cost $c(e)$ to every edge in $G$.
+% We denote the random vector of edge costs by $\mathbf{c}$.
+A path is a sequence of vertices $P = (v_0, v_1, \dots, v_p) \in V \times V \times \dots \times V$, such that $e_i = (v_{i-1}, v_i) \in E$ for every $1\le i\le p$. For paths, we use a natural syntactic extension of $c \in \mathcal C$ and write $c(P)$ as the sum of the costs of its edges. That is, $c(P) := \sum_{i = 1}^p c(e_i)$ for $c \in \mathcal C$.
+
+For two vertices $s, t \in V$, the \emph{shortest path} given a cost function $c \in \mathcal C$ is
+\[
+P^*_{s,t} = \text{argmin}_{P \in \mathcal{P}_{s,t}} \sum_{e \in P} c(e)
+\]
+where $\mathcal{P}_{s,t}$ is the set of all directed paths from $s$ to $t$ in $G$ and we break ties according to a fixed deterministic rule.
+Since the cost function follows the distribution $\mathcal D$, $P^*_{s,t}$ is a categorical random variable taking values in $\mathcal{P}_{s,t}$.
+
+\subsection{Query Model}
+
+We study the following computational problem.
+
+\begin{problem}[Shortest Path]
+\label{prob:shortest-path}
+Given the tuple $(G, \mathcal C, \mathcal D)$ of graph and the distribution over edge cost functions, preprocess the available information to answer queries of the following form:
+
+For a query $(s, t) \in V\times V$ and a realised cost function $c \sim \mathcal D$, return a path $P$ from $s$ to $t$ that is as cheap as possible under $c$.
+\end{problem}
+
+For an algorithm $ALG$ solving~\cref{prob:shortest-path} we define three key metrics. Let $T^0(ALG)$ be the worst-case preprocessing time, dependent on $n = |V|, m = |E|$ and $N$, that is $|\mathcal C|$ in case of a discrete distribution $\mathcal D$ and otherwise the number of samples $c$ taken from $\mathcal D$ in order to learn the distribution.
+
+A trivial solution is to compute a shortest path from scratch per query; this requires no preprocessing and is expensive at query time, but it returns the optimum. Another naive approach could be to precompute a single path $P_{s,t}$ for every pair $(s, t)$; this uses $O(n^2)$ storage and answers queries instantly, but the returned path may be far from optimal in many events.
+
+\subsection{Portfolio Method}
+
+The problem we study can be framed as an instance of the \emph{Portfolio Optimization} framework introduced by~\cite{miltospaper}. In the general formulation, a portfolio problem is described by a tuple $(I, V, \mathcal D, k)$ where $I$ is the set of feasible solutions to a combinatorial problem $\Pi$, $V$ is a set of value functions over $I$, $\mathcal D$ is a distribution over $V$, and $k$ is the desired portfolio size. The goal is to select $k$ solutions $S_1,\dots,S_k \in I$ offline, using only knowledge of $\mathcal D$, to optimise the expected value of the best among them:
+\[
+\text{value}(\{S_1,\dots,S_k\}) = \mathbb{E}_{v \sim \mathcal D}\bigl[\max_{i \in [k]} v(S_i)\bigr].
+\]
+
+For our shortest path setting, we work with the minimisation variant. The solution set $I = \mathcal{P}_{s,t}$ is the set of all directed $s$-$t$ paths. Importantly, the value functions in $V$ are not given directly over paths; instead, each cost function $c \in \mathcal C$ maps edges to non-negative costs, and we extend it to paths syntactically by summing edge costs: $c(P) = \sum_{e \in P} c(e)$. This means that a single edge-cost model $c$ simultaneously defines path costs for all source--target pairs, rather than requiring a separate family of path-cost functions for each pair. The distribution $\mathcal D$ over $\mathcal C$ is as before.
+
+Concretely, for a query pair $(s,t)$ we instantiate the portfolio problem $(\mathcal{P}_{s,t}, \mathcal C, \mathcal D, k)$ and precompute a small collection $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\}$ of $k$ candidate paths, called a \emph{portfolio}. At query time, given a realised cost function $c \sim \mathcal D$, we evaluate each path in $\mathcal{K}_{s,t}$ under $c$ and return the one with minimal cost. The goal is to design portfolios that, for any $c$, contain a path whose cost is close to the true shortest path cost $c(P^*_{s,t})$, while keeping $k$ small.
+

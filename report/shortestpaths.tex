@@ -2,32 +2,39 @@
 
 In \textit{ref query pair path} we are given a query $(s, t, W)$, the source and target vertices as well edge weights that follow the distribution $D_W$. The difficulty of returning a short path from $s$ to $t$ varies greatly upon the vertex pair and $D_W$. Possibly, $t$ is reachable from $s$ only with a singular path, or there is one path $P^*$ such that for any $W\sim D_W$, the weight of $P^*$ is less than the weight of any other path from $s$ to $t$. For some other pair $(s, t)$ in $V(G)$, there can be many options, and each one may be shorter than all others with some positive probability.
 
-In order to better understand the patterns of the shortest path random variables $d_{s,t}$ for all $s, t$ we study some of their properties in this section. Let $\overline{d_{s,t}}$ be the expected value of $d_{s,t}$. \Cref{shanghai_hist} shows its distribution over the vertex pairs in \cref{shanghai}.
+In order to better understand the patterns of the shortest path random variables $d_{s,t}$ for all $s, t$ we study some of their properties in this section. Let $mathbb E[d_{s,t}]$ be the expected value of $d_{s,t}$. \Cref{shanghai_hist} shows its distribution over the vertex pairs in \cref{shanghai}.
 
 \begin{figure}
     \centering
     \includegraphics[width=0.5\linewidth]{figures/sh_hist.png}
-    \caption{Histogram of $\overline{d_{s,t}}$ over all $(s, t)$ pairs in \cref{shanghai}.}
+    \caption{Histogram of $mathbb E[d_{s,t}]$ over all $(s, t)$ pairs in \cref{shanghai}.}
     \todo[inline]{axis labels, font size}
     \label{fig:mean_hist}
 \end{figure}
 
 We see there is a wide range of average distances. This is intuitive, shortest path weights should vary greatly for neighbouring vertices in comparison to having to cross the entire graph. With similar intuition, one might claim that \textit{ref query pair path} decreases in difficulty for $(s,t)$ that are adjacent in the graph. There might just not be any scenario over $D_W$, where the direct path using the edge $(s,t)$ is not the most sensible answer.
 
-In order to find some first queries that should prove interesting or difficult, we use scatter plots in the following discussion of $(s, t)$ pairs. There, each marker is two-coloured, indicating the values of $s$ and $t$ respectively. Let us first plot the already shown $\overline{d_{s,t}}$ against the variance of those same random variables, $\sigma^2{d_{s,t}}$.
+In order to find some first queries that should prove interesting or difficult, we use scatter plots in the following discussion of $(s, t)$ pairs. There, each marker is two-coloured, indicating the values of $s$ and $t$ respectively. Let us first plot the already shown $mathbb E[d_{s,t}]$ against the standard deviation of those same random variables, $\sigma(d_{s,t})$.
 
 \begin{figure}
     \centering
     \includegraphics[width=0.5\linewidth]{figures/sh_scatter_dist.png}
-    \caption{The expected values against the variance of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}.}
+    \caption{The expected values against the standard deviation of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}.}
     \todo[inline]{axis labels, font size}
     \label{fig:mean_vs_std}
 \end{figure}
 
-Clearly, the variance is very correlated with the expected distance between pairs and most points in the plot are found in one big cloud. Interestingly, one can find these strings of points with similar colours that form lines. Upon further inspection we notice that they form pairs of vertices with shared commonly used subpaths. Noteworthy are the $(6, 66)$ vertex pair, that is the pair with the furthest average travel distance as well as the highest absolute variance. As well as $(6, 13)$, for which the ratio of standard deviation over expected value is the highest. Note $(6, 13)$ is an edge in \cref{shanghai}, as well as the only path from $6$ to $13$, and it influences the entirety of the red band that is dotted almost horizontally along the grid line of a standard deviation of 20, which are all pairs whose source is $6$.
+Clearly, the variance is very correlated with the expected distance between pairs and most points in the plot are found in one big cloud. Interestingly, one can find these strings of points with similar colours that form lines. Upon further inspection we notice that they form pairs of vertices with shared commonly used subpaths. Noteworthy are the $(6, 66)$ vertex pair, that is the pair with the furthest average travel distance as well as the highest absolute standard deviation. As well as $(6, 13)$, for which the ratio of standard deviation over expected value is the highest. Note $(6, 13)$ is an edge in \cref{shanghai}, as well as the only path from $6$ to $13$, and it influences the entirety of the red band that is dotted almost horizontally along the grid line of a standard deviation of 20, which are all pairs whose source is $6$.
 
-This observation plays into the discussion of the difficulty of a source-target pair very crucially. $(6, 13)$ is not a difficult pair, there is only one single path to reach $13$ from $6$. The high variance of a single edge in the graph does not imply that many different paths can be the shortest in various events from the distribution. Instead, let us consider a new measure of uncertainty given $(s, t)$.
-$SP_{s,t}(\omega)$ denotes the path that is the shortest from $s$ to $t$ in the event $\omega$. Think of it as a categorical variable taking values like ``along the lake'' or ``the highway'', indicating which path is best as of now. When it is clear that the path is the same for all events $\omega \in \Omega$, then \textit{ref query pair path} is trivial, a portfolio of size $1$ is optimal and we always return that path. But when it takes many different values in many different events, that is when things become more difficult. Thus, we plot the entropy of $SP_{s,t}$ for all $s, t$ in \cref{fig:entropy_std}, in comparison the already discussed $\sigma^2(d_{s,t})$.
+This observation plays into the discussion of the difficulty of a source-target pair very crucially. $(6, 13)$ is not a difficult pair, there is only one single path to reach $13$ from $6$. The high variance of a single edge in the graph does not imply that many different paths are the shortest in distinct events from the distribution. Instead, let us consider a new measure of uncertainty given $(s, t)$.
+
+The shortest path's \emph{entropy} is
+\[
+H(P^*_{s,t}) = -\sum_{P \in \mathcal{P}_{s,t}} \Pr(P^*_{s,t} = P) \log \Pr(P^*_{s,t} = P),
+\]
+with the convention that $0 \log 0 = 0$. The entropy measures the uncertainty in which path will be the shortest.
+
+Think of $P^*_{s,t}$ as a categorical random variable taking values like ``along the lake'' or ``the highway'', indicating which path is best as of now. When it is clear that the path is the same for all events $\omega \in \Omega$, then \textit{ref query pair path} is trivial, a portfolio of size $1$ is optimal and we always return that path. But when it takes many different values in many different events, that is when things become more difficult. The entropy of the shortest path should capture a notion that is related to the difficulty of the query $(s,t)$. Thus, we plot $H(P^*_{s,t})$ for all $s, t$ in \cref{fig:entropy_std}, in comparison the already discussed $\sigma(d_{s,t})$.
 
 \begin{figure}
     \centering
@@ -39,6 +46,6 @@ $SP_{s,t}(\omega)$ denotes the path that is the shortest from $s$ to $t$ in the 
 
 We're quick to see how different of a picture the shortest path entropy paints in comparison to the standard deviation of the distance. The perfectly vertical strings of points are pairs that share subpaths, and because they have the same entropy they must be using the same subpaths in the exact same events. It is only the edges that are appended to the ends of those subpaths for some pairs that change the standard deviation of the distance considerably.
 
-In essence the entropy describes the uncertainty of what path will be the shortest. With less entropy, it thus is more likely that the shortest path is one that we expect. Notice that by the definition of entropy~\cref{eq:entropy}, when there are at most $k$ different paths, that ever are the shortest.
+In essence the entropy describes the uncertainty of what path will be the shortest. With less entropy, it thus is more likely that the shortest path is one that we expect. 
 
 
