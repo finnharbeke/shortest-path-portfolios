@@ -4,3 +4,4 @@ pick_pairs/*_dists.npy
 pick_pairs/*_paths.csv
 pick_pairs/la*.html
 uv.lock
+.env

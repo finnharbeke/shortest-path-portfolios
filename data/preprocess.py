@@ -71,6 +71,7 @@ def preprocess_shanghai():
     speed = scipy.io.loadmat('sh/selTraffic_1.mat')['selTraffic']
     # weight = pd.DataFrame(1 / speed.T) # calculating time as 1 / speed, since arcs are binary
     weight = pd.DataFrame(distances / speed.T) # calculating time as 1 / speed, since arcs are binary
+    # meters / kmh = 1e-3 h, 3.6s
     # speed.plot.hist(column=list(range(20)), bins=100,alpha=0.1)
     # plt.show()
     # print(speed.head())

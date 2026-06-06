@@ -1,39 +1,113 @@
 \section{Preliminaries}
+\label{sec:prelim}
 
 Let $G = (V, E)$ be a directed graph with $n = |V|$ vertices and $m = |E|$ edges. We consider a stochastic setting in which the edge costs are random. Let $\mathcal C$ be a set of cost functions from $E$ to $\mathbb R^{\ge 0}$ and $\mathcal D$ a distribution over them. So, $c \sim \mathcal D$ is a realised cost function assigning non-negative real cost $c(e)$ to every edge in $G$.
 % We denote the random vector of edge costs by $\mathbf{c}$.
-A path is a sequence of vertices $P = (v_0, v_1, \dots, v_p) \in V \times V \times \dots \times V$, such that $e_i = (v_{i-1}, v_i) \in E$ for every $1\le i\le p$. For paths, we use a natural syntactic extension of $c \in \mathcal C$ and write $c(P)$ as the sum of the costs of its edges. That is, $c(P) := \sum_{i = 1}^p c(e_i)$ for $c \in \mathcal C$.
+A path is a sequence of vertices $P = (v_0, v_1, \dots, v_p) \in V \times V \times \dots \times V$, such that $e_i = (v_{i-1}, v_i) \in E$ for every $1\le i\le p$. For paths' cost we write $f_c(P)$ as the sum of the costs of its edges. That is, $f_c(P) := \sum_{i = 1}^p c(e_i)$ for $c \in \mathcal C$.
 
-For two vertices $s, t \in V$, the \emph{shortest path} given a cost function $c \in \mathcal C$ is
+For two vertices $s, t \in V$, the \emph{shortest path} based on the random cost function $c \sim \mathcal D$ is
 \[
-P^*_{s,t} = \text{argmin}_{P \in \mathcal{P}_{s,t}} \sum_{e \in P} c(e)
+P^*_{s,t} = \argmin_{P \in \mathcal{P}_{s,t}} f_c(P)
 \]
 where $\mathcal{P}_{s,t}$ is the set of all directed paths from $s$ to $t$ in $G$ and we break ties according to a fixed deterministic rule.
 Since the cost function follows the distribution $\mathcal D$, $P^*_{s,t}$ is a categorical random variable taking values in $\mathcal{P}_{s,t}$.
+
+In the same manner, we define a random variable that denotes the cost of the shortest path, i.e.~the distance
+\[
+d_{s,t} = \min_{P \in \mathcal{P}_{s,t}} f_c(P)
+\]
+which takes non-negative, real values.
 
 \subsection{Query Model}
 
 We study the following computational problem.
 
-\begin{problem}[Shortest Path]
+\begin{problem}[Stochastic Shortest Path Problem]
 \label{prob:shortest-path}
 Given the tuple $(G, \mathcal C, \mathcal D)$ of graph and the distribution over edge cost functions, preprocess the available information to answer queries of the following form:
 
-For a query $(s, t) \in V\times V$ and a realised cost function $c \sim \mathcal D$, return a path $P$ from $s$ to $t$ that is as cheap as possible under $c$.
+\textbf{Query:} $(s, t) \in V\times V$, with realised $c \sim \mathcal D$.
+
+\textbf{Answer:} Directed path $P$ from $s$ to $t$ that is as cheap as possible under $f_c$.
 \end{problem}
 
-For an algorithm $ALG$ solving~\cref{prob:shortest-path} we define three key metrics. Let $T^0(ALG)$ be the worst-case preprocessing time, dependent on $n = |V|, m = |E|$ and $N$, that is $|\mathcal C|$ in case of a discrete distribution $\mathcal D$ and otherwise the number of samples $c$ taken from $\mathcal D$ in order to learn the distribution.
+Let $\textsc{alg}$ be an algorithm solving~\cref{prob:shortest-path}, then the quality of $\textsc{alg}$'s query answers can be measured in different manners. For a fixed source-target pair $(s,t)$ on a fixed input $(G, \mathcal C, \mathcal D)$ we define $\textsc{alg}$'s expected approximation factor:
 
-A trivial solution is to compute a shortest path from scratch per query; this requires no preprocessing and is expensive at query time, but it returns the optimum. Another naive approach could be to precompute a single path $P_{s,t}$ for every pair $(s, t)$; this uses $O(n^2)$ storage and answers queries instantly, but the returned path may be far from optimal in many events.
+\[
+\epsilon (\textsc{alg}, (G, \mathcal C, \mathcal D); s, t) = \mathbb{E}_{c \sim \mathcal D}\left[ \frac{f_c(P_{\textsc{alg}})}{f_c(P^*_{s,t})}\right] - 1
+\]
+
+When quantifying $\textsc{alg}$'s answer quality on $G$ as a whole, we can use different aggregating metrics over all $(s,t)$-pairs. Of natural interest is an upper bound on the expected approximation factors of all $(s,t)$-pairs. Due to limitations in compute resources we consider the observed mean
+
+\[
+\overline\epsilon_r (\textsc{alg}, (G, \mathcal C, \mathcal D)) = \frac1r \sum_{(s, t) \sim \mathcal{U}\{ST(G)\}}^r\mathbb{E}_{c \sim \mathcal D}\left[ \frac{f_c(P_{\textsc{alg}})}{f_c(P^*_{s,t})}\right] - 1
+\]
+, where $\mathcal U\{A\}$ is the discrete uniform distribution over the set $A$ and $ST(G) = \{(s,t) \in V\times V\mid t\text{ reachable from }s\text{ in }G$. As a quality measure, $\overline\epsilon_r (\textsc{alg}, (G, \mathcal C, \mathcal D))$ serves as an unbiased estimator of the expected $\epsilon(\textsc{alg}, (G, \mathcal C, \mathcal D); s, t)$ for $(s, t) \sim \mathcal U\{ST(G)\}$.
+It captures how much more $\textsc{alg}$'s answer is going to cost for a uniformly at random query $(s, t)$ and a realised edge cost function $c$ in comparison to the optimal solution for that query, $f_c(P^*_{s, t})$.
+
+Next to the above quality measure, we define three key metrics that matter for the analysis of any given $\textsc{alg}$ solving~\cref{prob:shortest-path}. Let $T^0(\textsc{alg})$ be the worst-case preprocessing time, dependent on $n = |V|, m = |E|$ and $N$, that is the number of sampled $c$'s taken from $\mathcal D$ in order to learn the distribution. The corresponding worst-case query time $T^q(\textsc{alg})$ denotes the worst-case time it takes $\textsc{alg}$ to provide an answer for any query $(s, t, c)$. Lastly, $S(\textsc{alg})$ denotes the space required by $\textsc{alg}$ to store the datastructure computed in preprocessing.
+
+A naive approach could be to precompute a single path $P_{s,t}$ for every pair $(s, t)$; this uses $\mathcal O(n^3)$ storage and answers queries instantly, but the returned path may be far from optimal in many events. Still, one can take $\mathcal C$ and $\mathcal D$ into consideration and make the best out of constant worst-case query time.
+The even more trivial solution is to compute a shortest path from scratch per query; this requires no preprocessing and is expensive at query time, but it always returns the optimum answer. In fact, this is a way to reduce the stochastic setting to the traditional shortest path problem.
+
+\begin{algorithm}[H]
+\caption{Stateless Dijkstra Algorithm, solving \nameref{prob:shortest-path} optimally.}
+\label{alg:dijkstra}
+\begin{algorithmic}[1]
+\Procedure{Preprocess}{$G$, $\mathcal C$, $\mathcal D$}
+    \State $\text{data} \gets \emptyset$
+    \State \Return $\text{data}$
+\EndProcedure
+\Statex
+\Procedure{Query}{$s$, $t$, $c$, $\text{data}$}
+    \State $P \gets \textsc{Dijkstra}(G,\, s,\, t,\, c)$
+    \State \Return $P$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+The main characteristic that we want to improve on in this project is the fact that $T^q(\Cref{alg:dijkstra}) = \mathcal O(n \log n)$. For completeness sake let us explicitly state that $T^0(\Cref{alg:dijkstra})$ as well as $S(\Cref{alg:dijkstra})$ is zero and $\overline\epsilon_r (\Cref{alg:dijkstra}, (G, \mathcal C, \mathcal D)) = 1$ for any $(G, \mathcal C, \mathcal D)$.
 
 \subsection{Portfolio Method}
 
-The problem we study can be framed as an instance of the \emph{Portfolio Optimization} framework introduced by~\cite{miltospaper}. In the general formulation, a portfolio problem is described by a tuple $(I, V, \mathcal D, k)$ where $I$ is the set of feasible solutions to a combinatorial problem $\Pi$, $V$ is a set of value functions over $I$, $\mathcal D$ is a distribution over $V$, and $k$ is the desired portfolio size. The goal is to select $k$ solutions $S_1,\dots,S_k \in I$ offline, using only knowledge of $\mathcal D$, to optimise the expected value of the best among them:
+The problem we study can be framed as an instance of the \emph{Portfolio Optimization} framework introduced by~\cite{miltospaper}. In the general formulation, a portfolio problem is described by a tuple $(\mathcal I, \mathcal V, \mathcal D, k)$ where $\mathcal I$ is the set of feasible solutions to a combinatorial problem $\Pi$, $\mathcal V$ is a set of value functions over $\mathcal I$, $\mathcal D$ is a distribution over $\mathcal V$, and $k$ is the desired portfolio size. The goal is to select $k$ solutions $S_1,\dots,S_k \in \mathcal I$ offline, using only knowledge of $\mathcal D$, to optimise the expected value of the best among them:
 \[
-\text{value}(\{S_1,\dots,S_k\}) = \mathbb{E}_{v \sim \mathcal D}\bigl[\max_{i \in [k]} v(S_i)\bigr].
+\text{value}(\{S_1,\dots,S_k\}) = \mathbb{E}_{v \sim \mathcal D}\left[\max_{i \in [k]} v(S_i)\right].
 \]
 
-For our shortest path setting, we work with the minimisation variant. The solution set $I = \mathcal{P}_{s,t}$ is the set of all directed $s$-$t$ paths. Importantly, the value functions in $V$ are not given directly over paths; instead, each cost function $c \in \mathcal C$ maps edges to non-negative costs, and we extend it to paths syntactically by summing edge costs: $c(P) = \sum_{e \in P} c(e)$. This means that a single edge-cost model $c$ simultaneously defines path costs for all source--target pairs, rather than requiring a separate family of path-cost functions for each pair. The distribution $\mathcal D$ over $\mathcal C$ is as before.
+For our shortest path setting, we work with the minimisation variant. The solution set $\mathcal I = \mathcal{P}_{s,t}$ is the set of all directed $s$-$t$ paths. Instead of value functions, we use cost functions. And importantly, the cost functions in $\mathcal C$ are not given directly over paths, but over edges instead. But for some $c \in \mathcal C$ we defined $f_c$ as the cost function for paths. Let $\mathcal F$ thus be the set of all path-cost functions. Then we can write $\mathcal D_{\mathcal F}$ as the distribution over $\mathcal F$ that is obtained by taking $f_c$ for $c \sim \mathcal D$. Given these notations, we can define the portfolio problem.
 
-Concretely, for a query pair $(s,t)$ we instantiate the portfolio problem $(\mathcal{P}_{s,t}, \mathcal C, \mathcal D, k)$ and precompute a small collection $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\}$ of $k$ candidate paths, called a \emph{portfolio}. At query time, given a realised cost function $c \sim \mathcal D$, we evaluate each path in $\mathcal{K}_{s,t}$ under $c$ and return the one with minimal cost. The goal is to design portfolios that, for any $c$, contain a path whose cost is close to the true shortest path cost $c(P^*_{s,t})$, while keeping $k$ small.
+%For some $f_c$, its domain is all paths in $G$, so clearly it simultaneously defines path costs for all source-target pairs. The distribution $\mathcal D$ over $\mathcal C$ is as before.
+Let $(G, \mathcal C, \mathcal D)$ be an instance of \cref{prob:shortest-path} with a single fixed query $(s, t)$, but the realisation of $c$ unknown in advance.
 
+\begin{problem}[$(s,t)$-Portfolio]
+\label{prob:portfolio}
+Given the tuple $(\mathcal{P}_{s,t}, \mathcal F, \mathcal D_{\mathcal F}, k)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\}$, called a \emph{portfolio}, such that
+\[
+\text{cost}(\mathcal K_{s,t}) = \mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\min_{i \in [k]} f_c(P_i)\right]
+\]
+is as small as possible. In particular, we compare its cost with the shortest path:
+\[
+\epsilon(\mathcal K_{s,t}) = \mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\frac{\min_{i \in [k]} f_c(P_i)}{f_c{P^*_{s,t}}}\right] - 1
+\]
+\end{problem}
+
+\nameref{prob:portfolio} provides us with a straightforward solution strategy for \nameref{prob:shortest-path}. Given $\mathcal O(k n^3)$ space, we can find portfolios for every pair $(s,t)$ of reachable vertices in $G$, each taking $\mathcal O(k n)$ space. Then, for any query $(s, t, c)$ we evaluate $\mathcal K_{s,t}$ under $f_c$ and return the cheapest path among them.
+
+\begin{algorithm}[H]
+\caption{Portfolio-based algorithm for \nameref{prob:shortest-path} using a black-box \textsc{PortfolioAlg}.}
+\label{alg:portfolio}
+\begin{algorithmic}[1]
+\Procedure{Preprocess}{$G$, $\mathcal C$, $\mathcal D$}
+    \For{$(s, t) \in ST(G)$}
+        \State $\mathcal K_{s,t} \gets \textsc{PortfolioAlg}(\mathcal P_{s,t},\, \mathcal F,\, \mathcal D_{\mathcal F},\, k)$
+    \EndFor
+    \State \Return $\{\mathcal K_{s,t} \mid (s,t) \in ST(G)\}$
+\EndProcedure
+\Statex
+\Procedure{Query}{$s$, $t$, $c$, $\mathcal K$}
+    \State $P \gets \argmin_{P' \in \, \mathcal K_{s,t}} f_c(P')$
+    \State \Return $P$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}

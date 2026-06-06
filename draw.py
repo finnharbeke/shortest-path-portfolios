@@ -6,6 +6,11 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import folium
+from dotenv import load_dotenv
+import os
+from folium.plugins import MiniMap
+
+load_dotenv()
 
 from graph import Graph
 from path import Path
@@ -132,23 +137,45 @@ def draw_partition(ew_kwargs, p_kwargs, bar_kwargs, savefig, title):
     fig.tight_layout()
     fig.savefig(savefig, dpi=300)
 
+from draw_helpers import _arrowhead, _shorten_line
+
 def draw_coords(g, cds_file):
     cds = pd.read_csv(cds_file, index_col=0)
-    m = folium.Map(location=(cds['lat'].mean(), cds['lon'].mean()), zoom_start=15)
-    
+    # t = folium.raster_layers.TileLayer(tiles='OpenStreetMap', attr='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', referrerPolicy='strict-origin-when-cross-origin')
+    t = folium.raster_layers.TileLayer(tiles=f'https://api.thunderforest.com/mobile-atlas/{{z}}/{{x}}/{{y}}{{r}}.png?apikey={os.getenv("THUNDERFOREST_APIKEY")}', 
+	attr= '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    apikey=os.getenv("THUNDERFOEST_APIKEY"),
+	maxZoom= 22
+    )
+    m = folium.Map(location=(cds['lat'].quantile(.35), cds['lon'].mean()), zoom_start=16, tiles=t, zoom_control=False)
+    fontsize = 16
+
     for arc in g.arcs:
         u, v = arc
         latlon = lambda row: (row['lat'], row['lon'])
-        folium.PolyLine([latlon(0.8*cds.loc[u] + 0.2*cds.loc[v]), latlon(0.2*cds.loc[u] + 0.8*cds.loc[v])], color='#6666a1', weight=5).add_to(m)
-        folium.PolyLine([latlon(0.2*cds.loc[u] + 0.8*cds.loc[v]), latlon(cds.loc[v])], color='#c65522', weight=5).add_to(m)
+
+        # deepseek-v4-flash
+        # CircleMarker radius = fontsize * 1.2 = 24 px.
+        # At zoom_start=16, Shanghai (~31°N): ~2 m/px, so 24 px ≈ 48 m.
+        # 48 m ≈ 0.00043° lat
+        # finn using .0006
+        node_r_deg = 0.0006
+        p1, p2 = _shorten_line(latlon(cds.loc[u]), latlon(cds.loc[v]), node_r_deg)
+        folium.PolyLine(_arrowhead([p1, p2]), color='#222', weight=fontsize * .2).add_to(m)
 
     for i, row in cds.iterrows():
         lat = row['lat']
         lon = row['lon']
         color = mpl.colors.to_hex(cm(i / (len(cds) - 1)))
-        folium.CircleMarker(location=(lat, lon), radius=10, tooltip=i, fill=True, fillOpacity=0.5, color=color, fillColor='#fff').add_to(m)
-        folium.Marker(location=(lat, lon), icon=folium.features.DivIcon(icon_anchor=(8, 10), html=f'<div style="font-size:11pt; color:#222">{i:02d}</div>')).add_to(m)
+        folium.CircleMarker(location=(lat, lon), radius=fontsize * 1.2, weight=fontsize * .33, tooltip=str(i), fill=True, fillOpacity=0.5, color=color, fillColor='#fff').add_to(m)
+        folium.Marker(location=(lat, lon),
+                      icon=folium.features.DivIcon(icon_anchor=(round(fontsize * .75), fontsize),
+                                                   html=f'<div style="font-size:{fontsize}pt; color:#222; font-weight: bold">{i:02d}</div>'
+                                                   )
+                      ).add_to(m)
 
+    mini = MiniMap(tile_layer=t, width=500, height=300)
+    mini.add_to(m)
     m.save("graph_drawings/shanghai.html")
 
 if __name__ == "__main__":
@@ -159,10 +186,10 @@ if __name__ == "__main__":
     print(sh.out_arcs[10])
     print([sh.arcs[a] for a in sh.out_arcs[10]])
 
-    draw_nx(sh, savefig='graph_drawings/sh.png')
-    sz = Graph.load('sz')
-    draw_nx(sz, savefig='graph_drawings/sz.png', figsize=(9,6))
-    la = Graph.load('la')
-    draw_nx(la, savefig='graph_drawings/la.png', figsize=(11, 7))
+    # draw_nx(sh, savefig='graph_drawings/sh.png')
+    # sz = Graph.load('sz')
+    # draw_nx(sz, savefig='graph_drawings/sz.png', figsize=(9,6))
+    # la = Graph.load('la')
+    # draw_nx(la, savefig='graph_drawings/la.png', figsize=(11, 7))
 
     draw_coords(sh, 'data/sh_coords.csv')
