@@ -292,7 +292,7 @@ def uv_scatterplot(x, xlabel, y, ylabel, filename):
     plt.gcf().clear()
 
 
-uv_scatterplot('expected s-t distance', r'$𝔼[d_{s,t}]$', 'standard deviation of s-t distance', r'$\sigma(d_{s,t})$', 'sh_dist_scatter.pdf')
-uv_scatterplot('entropy', r'$H(P^*_{s,t})$', 'standard deviation of s-t distance', r'$\sigma(d_{s,t})$', 'sh_path_scatter.pdf')
+uv_scatterplot('expected s-t distance', r'$𝔼[d_{s,t}]$', 'standard deviation of s-t distance', r'$\sigma(d_{s,t})$', 'sh_mean_std.pdf')
+uv_scatterplot('entropy', r'$H(P^*_{s,t})$', 'standard deviation of s-t distance', r'$\sigma(d_{s,t})$', 'sh_entropy_std.pdf')
 
 

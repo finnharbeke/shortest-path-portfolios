@@ -21,10 +21,9 @@ In order to find some first $(s,t)$-queries that should prove interesting or dif
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\linewidth]{figures/sh_scatter_dist.png}
-    \caption{The expected values against the standard deviation of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}.}
-    \todo[inline]{axis labels, font size}
-    \label{fig:mean_vs_std}
+    \includegraphics{figures/sh_mean_std.pdf}
+\caption{The expectance values against the standard deviation of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}. Each point corresponding to an $(s,t)$ pair is two-coloured matching the colouring in \cref{fig:shanghai} in order to more easily find the corresponding pairs there. For a larger, interactive plot visit \href{https://finnharbeke.github.io/shortest-path-portfolios/sh_dist_scatter.html}{this project’s GitHub Pages}.}
+\label{fig:mean_vs_std}
 \end{figure}
 
 Clearly, the expected distance and the standard deviation are very correlated and most points in the plot are found in one big cloud. Interestingly, one can find these strings of points with similar colours that form lines. Upon further inspection we notice that they form pairs of vertices with shared commonly used subpaths. Noteworthy are the $(6, 66)$ vertex pair, that is the pair with the furthest average travel distance as well as the highest absolute standard deviation. As well as $(6, 13)$, for which the ratio of standard deviation over expected value is the highest. Note $(6, 13)$ is an edge in \cref{shanghai}, as well as the only path from $6$ to $13$, and it influences the entirety of the red band that is dotted almost horizontally along the grid line of a standard deviation of 20, which are all pairs whose source is $6$.
@@ -41,9 +40,8 @@ Think of $P^*_{s,t}$ as a categorical random variable taking values like ``along
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\linewidth]{figures/sh_entropy_std.png}
-    \caption{something something entropy}
-    \todo[inline]{axis labels, font size}
+    \includegraphics{figures/sh_entropy_std.pdf}
+    \caption{The entropy of the shortest path against the standard deviation of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}. Each point corresponding to an $(s,t)$ pair is two-coloured matching the colouring in \cref{fig:shanghai} in order to more easily find the corresponding pairs there. For a larger, interactive plot visit \href{https://finnharbeke.github.io/shortest-path-portfolios/sh_entr_std_scatter.html}{this project’s GitHub Pages}.}
     \label{fig:entropy_std}
 \end{figure}
 

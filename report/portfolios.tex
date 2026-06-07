@@ -1,6 +1,9 @@
 \section{Portfolios}
 \label{sec:portfolios}
 
-We propose to solve \textit{ref query pair path} with the \textit{portfolio method} framework. Given $\mathcal O(n^2)$ space, how can we compute portfolios of $k$ paths in polynomial time, such that for any graph weight realization and query $(s, t)$, the shortest path in the respective portfolio is close to the optimal shortest path from $s$ to $t$.
+We propose to solve \cref{prob:shortest-path} with the framework given in \cref{alg:portfolio}. Given $\mathcal O(k n^3)$ space, how can we compute portfolios of $k$ paths in polynomial time, such that for any graph weight realization and query $(s, t)$, the shortest path in the respective portfolio is close to the optimal shortest path from $s$ to $t$.
+In this section we propose three different algorithms solving \cref{prob:portfolio}.
 
+\subsection{Algorithms}
 
+If you consider $\mathrm{value}(\mathcal K_{s,t}) = -\mathrm{cost}(\mathcal K_{s,t})$ and the maximization problem of that function, then $\mathrm{value}(\mathcal K_{s,t})$ is a monotone submodular function, as pointed out by \cref{miltos} and initially shown by \cref{kr18}. Note that \cref{prob:portfolio} is an equivalent problem, and we can thus solve it with the widespread \textit{Greedy} algorithm. It builds the solution set iteratively, starting with the path that is the cheapest in expectation and then adding one path at a time to the set, such that at every step the cost is minimised over all candidates. As shown by \cref{nemhauser} it is thus a $(1 - 1/e)$ approximation.
