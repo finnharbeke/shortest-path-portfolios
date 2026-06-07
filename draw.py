@@ -147,7 +147,7 @@ def draw_coords(g, cds_file):
     apikey=os.getenv("THUNDERFOEST_APIKEY"),
 	maxZoom= 22
     )
-    m = folium.Map(location=(cds['lat'].quantile(.35), cds['lon'].mean()), zoom_start=16, tiles=t, zoom_control=False)
+    m = folium.Map(location=(cds['lat'].quantile(.35), cds['lon'].mean()), zoom_start=16, tiles=t, control_scale=True)
     fontsize = 16
 
     for arc in g.arcs:
@@ -176,7 +176,7 @@ def draw_coords(g, cds_file):
 
     mini = MiniMap(tile_layer=t, width=500, height=300)
     mini.add_to(m)
-    m.save("graph_drawings/shanghai.html")
+    m.save("docs/shanghai.html")
 
 if __name__ == "__main__":
     sh = Graph.load('sh')
