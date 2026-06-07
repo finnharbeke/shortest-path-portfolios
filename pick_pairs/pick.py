@@ -6,6 +6,7 @@ import itertools
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly
+import os
 
 def uv_scatterplot(x, y, filename):
     fig1 = px.scatter(path_stats, x=x, y=y, color='t', hover_data=['s', 't'])
@@ -14,7 +15,7 @@ def uv_scatterplot(x, y, filename):
     fig2.update_traces(marker=dict(size=8, symbol='star-diamond'))
     fig = go.Figure(data = fig1.data + fig2.data)
     fig.update_layout(colorscale=dict(sequential=px.colors.diverging.Spectral), xaxis_title=x, yaxis_title=y)
-    plotly.offline.plot(fig, filename=filename)
+    plotly.offline.plot(fig, filename=os.path.join('..', 'docs', filename))
 
 def entropy_mode_freq(col):
     freq = col.value_counts(normalize=True)
