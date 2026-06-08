@@ -66,7 +66,7 @@ The even more trivial solution is to compute a shortest path from scratch per qu
 \end{algorithmic}
 \end{algorithm}
 
-The main characteristic that we want to improve on in this project is the fact that $T^q(\Cref{alg:dijkstra}) = \mathcal O(n \log n)$. For completeness sake let us explicitly state that $T^0(\Cref{alg:dijkstra})$ as well as $S(\Cref{alg:dijkstra})$ is zero and $\overline\epsilon_r (\Cref{alg:dijkstra}, (G, \mathcal C, \mathcal D)) = 1$ for any $(G, \mathcal C, \mathcal D)$.
+The main characteristic that we want to improve on in this project is the fact that $T^q(\text{\Cref{alg:dijkstra}}) = \mathcal O(n \log n)$. For completeness sake let us explicitly state that both $T^0(\text{\Cref{alg:dijkstra}})$ both $S(\text{\Cref{alg:dijkstra}})$ is zero and $\overline\epsilon_r (\text{\Cref{alg:dijkstra}}, (G, \mathcal C, \mathcal D)) = 1$ for any $(G, \mathcal C, \mathcal D)$.
 
 \subsection{Portfolio Method}
 
@@ -81,12 +81,12 @@ For our shortest path setting, we work with the minimisation variant. The soluti
 Let $(G, \mathcal C, \mathcal D)$ be an instance of \cref{prob:shortest-path} with a single fixed query $(s, t)$, but the realisation of $c$ unknown in advance.
 
 \begin{problem}[$(s,t)$-Portfolio]
-\label{prob:portfolio}
+\label{prob:portfolioExplicit}
 Given the tuple $(\mathcal{P}_{s,t}, \mathcal F, \mathcal D_{\mathcal F}, k)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\}$, called a \emph{portfolio}, such that
 \[
 \text{cost}(\mathcal K_{s,t}) = \mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\min_{i \in [k]} f_c(P_i)\right]
 \]
-is as small as possible. In particular, we compare its cost with the shortest path:
+is as small as possible. In particular, we compare its cost with that of the shortest path:
 \[
 \epsilon(\mathcal K_{s,t}) = \mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\frac{\min_{i \in [k]} f_c(P_i)}{f_c{P^*_{s,t}}}\right] - 1
 \]
@@ -94,15 +94,26 @@ is as small as possible. In particular, we compare its cost with the shortest pa
 
 \nameref{prob:portfolio} provides us with a straightforward solution strategy for \nameref{prob:shortest-path}. Given $\mathcal O(k n^3)$ space, we can find portfolios for every pair $(s,t)$ of reachable vertices in $G$, each taking $\mathcal O(k n)$ space. Then, for any query $(s, t, c)$ we evaluate $\mathcal K_{s,t}$ under $f_c$ and return the cheapest path among them.
 
+Note that $\mathcal P_{s,t}$ can have a cardinality that is exponential in $n$. So, if we wanted to use an algorithm that solves \cref{prob:portfolioExplicit} in order to find answers for \cref{prob:shortest-path}, then we had exponential worst-case runtime no matter what. Instead, we define a sibling problem to \cref{prob:portfolioExplicit}, whose input is polynomial in $n, m, N$.
+Instead of the explicit $\mathcal P_{s,t}$ and the functions over them we pass $G$ and $\mathcal C$ as input and let the algorithm decide if it needs to find all paths between $s$ and $t$ or if it does not actually need the entire set in order to find a fitting subset. The relative cost $\epsilon(\mathcal K_{s,t})$ can also be computed without being given the explicit $\mathcal F$, by just taking $c\in \mathcal C$ and computing the path costs as sums of the costs of their edges.
+
+\begin{problem}[implicit $(s,t)$-Portfolio]
+\label{prob:portfolio}
+Given the tuple $(G, \mathcal C, \mathcal D, k)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\} \subseteq \mathcal P_{s,t}$, called a \emph{portfolio}, such that $\epsilon(\mathcal K_{s,t})$ is as small as possible.
+\end{problem}
+
+Given this problem, we can now use a black-box algorithm \textsc{PortfolioAlg} for it and describe the strategy with which we solve \cref{prob:shortest-path} in \cref{alg:portfolio}. If we take $k = \mathcal O(n)$, then all the inputs to \textsc{PortfolioAlg} are polynomial in $n,m,N$ and if \textsc{PortfolioAlg}'s worst-case runtime is polynomial in $n,m,N,k$, then \cref{alg:portfolio} has a worst-case runtime that is polynomial in its input length.
+
 \begin{algorithm}[H]
-\caption{Portfolio-based algorithm for \nameref{prob:shortest-path} using a black-box \textsc{PortfolioAlg}.}
+\caption{Portfolio-based algorithm for \cref{prob:shortest-path} using a black-box \textsc{PortfolioAlg} for \cref{prob:portfolio}.}
 \label{alg:portfolio}
 \begin{algorithmic}[1]
 \Procedure{Preprocess}{$G$, $\mathcal C$, $\mathcal D$}
+    \State $k \gets \text{chosen parameter}$
     \For{$(s, t) \in ST(G)$}
-        \State $\mathcal K_{s,t} \gets \textsc{PortfolioAlg}(\mathcal P_{s,t},\, \mathcal F,\, \mathcal D_{\mathcal F},\, k)$
+        \State $\mathcal K_{s,t} \gets \textsc{PortfolioAlg}(G, \mathcal C, \mathcal D, k)$
     \EndFor
-    \State \Return $\{\mathcal K_{s,t} \mid (s,t) \in ST(G)\}$
+    \State \Return $\mathcal K = \{\mathcal K_{s,t} \mid (s,t) \in ST(G)\}$
 \EndProcedure
 \Statex
 \Procedure{Query}{$s$, $t$, $c$, $\mathcal K$}

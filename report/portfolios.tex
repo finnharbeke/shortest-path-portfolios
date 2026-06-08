@@ -6,4 +6,29 @@ In this section we propose three different algorithms solving \cref{prob:portfol
 
 \subsection{Algorithms}
 
-If you consider $\mathrm{value}(\mathcal K_{s,t}) = -\mathrm{cost}(\mathcal K_{s,t})$ and the maximization problem of that function, then $\mathrm{value}(\mathcal K_{s,t})$ is a monotone submodular function, as pointed out by \cref{miltos} and initially shown by \cref{kr18}. Note that \cref{prob:portfolio} is an equivalent problem, and we can thus solve it with the widespread \textit{Greedy} algorithm. It builds the solution set iteratively, starting with the path that is the cheapest in expectation and then adding one path at a time to the set, such that at every step the cost is minimised over all candidates. As shown by \cref{nemhauser} it is thus a $(1 - 1/e)$ approximation.
+If you consider $\mathrm{value}(\mathcal K_{s,t}) = -\mathrm{cost}(\mathcal K_{s,t})$ and the maximization problem of that function, then $\mathrm{value}(\mathcal K_{s,t})$ is a monotone submodular function, as pointed out by \cite{miltos} and initially shown by \cite{kr18}. Note that \cref{prob:portfolio} is an equivalent problem, and we can thus solve it with the widespread \textit{Greedy} algorithm. It builds the solution set iteratively, starting with the path that is the cheapest in expectation and then adding one path at a time to the set, such that at every step the cost is minimised over all candidates. We describe the procedure in \cref{alg:greedy}.
+%As shown by \cref{nemhauser} it is thus a $(1 - 1/e)$ approximation.
+
+\begin{algorithm}[H]
+\caption{Greedy Algorithm for \nameref{prob:portfolio}}
+\label{alg:greedy}
+\begin{algorithmic}[1]
+\Procedure{Greedy}{$G$, $\mathcal C$, $\mathcal D$}
+\State $\mathcal K^0_{s,t} \gets \emptyset$
+\State $\mathcal P_{s,t} \gets$ the set of all paths from $s$ to $t$
+\State $i \gets 0$
+\While{$i < k$}
+  \State $i \gets i+1$
+  \State $P^\dagger \gets$ none
+  \State best $\gets \infty$ 
+  \For{$P \in \mathcal P_{s,t}$}
+    \If{$\text{cost}(\mathcal K^{i-1}_{s,t} \cup \{P\}) < \text{best}$}
+      \State $P^\dagger \gets P$
+    \EndIf
+  \EndFor
+  \State $\mathcal K^i_{s,t} =\mathcal K^{i-1}_{s,t} \cup \{P^\dagger\}$ 
+\EndWhile
+\State \Return $\mathcal K^k_{s,t}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
