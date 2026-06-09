@@ -34,15 +34,15 @@ Given the tuple $(G, \mathcal C, \mathcal D)$ of graph and the distribution over
 Let $\textsc{alg}$ be an algorithm solving~\cref{prob:shortest-path}, then the quality of $\textsc{alg}$'s query answers can be measured in different manners. For a fixed source-target pair $(s,t)$ on a fixed input $(G, \mathcal C, \mathcal D)$ we define $\textsc{alg}$'s expected approximation factor:
 
 \[
-\epsilon (\textsc{alg}, (G, \mathcal C, \mathcal D); s, t) = \mathbb{E}_{c \sim \mathcal D}\left[ \frac{f_c(P_{\textsc{alg}})}{f_c(P^*_{s,t})}\right] - 1
+\alpha (\textsc{alg}, (G, \mathcal C, \mathcal D); s, t) = \frac{\mathbb{E}_{c \sim \mathcal D}\left[ f_c(P_{\textsc{alg}})\right]}{\mathbb{E}_{c \sim \mathcal D}\left[f_c(P^*_{s,t})\right]}
 \]
 
 When quantifying $\textsc{alg}$'s answer quality on $G$ as a whole, we can use different aggregating metrics over all $(s,t)$-pairs. Of natural interest is an upper bound on the expected approximation factors of all $(s,t)$-pairs. Due to limitations in compute resources we consider the observed mean
 
 \[
-\overline\epsilon_r (\textsc{alg}, (G, \mathcal C, \mathcal D)) = \frac1r \sum_{(s, t) \sim \mathcal{U}\{ST(G)\}}^r\mathbb{E}_{c \sim \mathcal D}\left[ \frac{f_c(P_{\textsc{alg}})}{f_c(P^*_{s,t})}\right] - 1
+\overline\alpha_r (\textsc{alg}, (G, \mathcal C, \mathcal D)) = \frac1r \sum_{(s, t) \sim \mathcal{U}\{ST(G)\}}^r\frac{\mathbb{E}_{c \sim \mathcal D}\left[ f_c(P_{\textsc{alg}})\right]}{\mathbb{E}_{c \sim \mathcal D}\left[f_c(P^*_{s,t})\right]},
 \]
-, where $\mathcal U\{A\}$ is the discrete uniform distribution over the set $A$ and $ST(G) = \{(s,t) \in V\times V\mid t\text{ reachable from }s\text{ in }G$. As a quality measure, $\overline\epsilon_r (\textsc{alg}, (G, \mathcal C, \mathcal D))$ serves as an unbiased estimator of the expected $\epsilon(\textsc{alg}, (G, \mathcal C, \mathcal D); s, t)$ for $(s, t) \sim \mathcal U\{ST(G)\}$.
+where $\mathcal U\{A\}$ is the discrete uniform distribution over the set $A$ and $ST(G) = \{(s,t) \in V\times V\mid t\text{ reachable from }s\text{ in }G$. As a quality measure, $\overline\alpha_r (\textsc{alg}, (G, \mathcal C, \mathcal D))$ serves as an unbiased estimator of the expected $\alpha(\textsc{alg}, (G, \mathcal C, \mathcal D); s, t)$ for $(s, t) \sim \mathcal U\{ST(G)\}$.
 It captures how much more $\textsc{alg}$'s answer is going to cost for a uniformly at random query $(s, t)$ and a realised edge cost function $c$ in comparison to the optimal solution for that query, $f_c(P^*_{s, t})$.
 
 Next to the above quality measure, we define three key metrics that matter for the analysis of any given $\textsc{alg}$ solving~\cref{prob:shortest-path}. Let $T^0(\textsc{alg})$ be the worst-case preprocessing time, dependent on $n = |V|, m = |E|$ and $N$, that is the number of sampled $c$'s taken from $\mathcal D$ in order to learn the distribution. The corresponding worst-case query time $T^q(\textsc{alg})$ denotes the worst-case time it takes $\textsc{alg}$ to provide an answer for any query $(s, t, c)$. Lastly, $S(\textsc{alg})$ denotes the space required by $\textsc{alg}$ to store the datastructure computed in preprocessing.
@@ -66,11 +66,11 @@ The even more trivial solution is to compute a shortest path from scratch per qu
 \end{algorithmic}
 \end{algorithm}
 
-The main characteristic that we want to improve on in this project is the fact that $T^q(\text{\Cref{alg:dijkstra}}) = \mathcal O(n \log n)$. For completeness sake let us explicitly state that both $T^0(\text{\Cref{alg:dijkstra}})$ both $S(\text{\Cref{alg:dijkstra}})$ is zero and $\overline\epsilon_r (\text{\Cref{alg:dijkstra}}, (G, \mathcal C, \mathcal D)) = 1$ for any $(G, \mathcal C, \mathcal D)$.
+The main characteristic that we want to improve on in this project is the fact that $T^q(\text{\Cref{alg:dijkstra}}) = \mathcal O(n \log n)$. For completeness sake let us explicitly state that both $T^0(\text{\Cref{alg:dijkstra}})$ both $S(\text{\Cref{alg:dijkstra}})$ is zero and $\overline\alpha_r (\text{\Cref{alg:dijkstra}}, (G, \mathcal C, \mathcal D)) = 1$ for any $(G, \mathcal C, \mathcal D)$.
 
 \subsection{Portfolio Method}
 
-The problem we study can be framed as an instance of the \emph{Portfolio Optimization} framework introduced by~\cite{miltospaper}. In the general formulation, a portfolio problem is described by a tuple $(\mathcal I, \mathcal V, \mathcal D, k)$ where $\mathcal I$ is the set of feasible solutions to a combinatorial problem $\Pi$, $\mathcal V$ is a set of value functions over $\mathcal I$, $\mathcal D$ is a distribution over $\mathcal V$, and $k$ is the desired portfolio size. The goal is to select $k$ solutions $S_1,\dots,S_k \in \mathcal I$ offline, using only knowledge of $\mathcal D$, to optimise the expected value of the best among them:
+The problem we study can be framed as an instance of the \emph{Portfolio Optimization} framework introduced by~\cite{miltos}. In the general formulation, a portfolio problem is described by a tuple $(\mathcal I, \mathcal V, \mathcal D, k)$ where $\mathcal I$ is the set of feasible solutions to a combinatorial problem $\Pi$, $\mathcal V$ is a set of value functions over $\mathcal I$, $\mathcal D$ is a distribution over $\mathcal V$, and $k$ is the desired portfolio size. The goal is to select $k$ solutions $S_1,\dots,S_k \in \mathcal I$ offline, using only knowledge of $\mathcal D$, to optimise the expected value of the best among them:
 \[
 \text{value}(\{S_1,\dots,S_k\}) = \mathbb{E}_{v \sim \mathcal D}\left[\max_{i \in [k]} v(S_i)\right].
 \]
@@ -82,24 +82,24 @@ Let $(G, \mathcal C, \mathcal D)$ be an instance of \cref{prob:shortest-path} wi
 
 \begin{problem}[$(s,t)$-Portfolio]
 \label{prob:portfolioExplicit}
-Given the tuple $(\mathcal{P}_{s,t}, \mathcal F, \mathcal D_{\mathcal F}, k)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\}$, called a \emph{portfolio}, such that
+Given the tuple $(\mathcal{P}_{s,t}, \mathcal F, \mathcal D_{\mathcal F}, k, s, t)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\}$, called a \emph{portfolio}, such that
 \[
 \text{cost}(\mathcal K_{s,t}) = \mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\min_{i \in [k]} f_c(P_i)\right]
 \]
 is as small as possible. In particular, we compare its cost with that of the shortest path:
 \[
-\epsilon(\mathcal K_{s,t}) = \mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\frac{\min_{i \in [k]} f_c(P_i)}{f_c{P^*_{s,t}}}\right] - 1
+\alpha(\mathcal K_{s,t}) = \frac{\mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[\min_{i \in [k]} f_c(P_i)\right]}{\mathbb{E}_{f_c \sim \mathcal D_{\mathcal F}}\left[f_c(P^*_{s,t})\right]},
 \]
 \end{problem}
 
-\nameref{prob:portfolio} provides us with a straightforward solution strategy for \nameref{prob:shortest-path}. Given $\mathcal O(k n^3)$ space, we can find portfolios for every pair $(s,t)$ of reachable vertices in $G$, each taking $\mathcal O(k n)$ space. Then, for any query $(s, t, c)$ we evaluate $\mathcal K_{s,t}$ under $f_c$ and return the cheapest path among them.
+\nameref{prob:portfolioExplicit} provides us with a straightforward solution strategy for \nameref{prob:shortest-path}. Given $\mathcal O(k n^3)$ space, we can find portfolios for every pair $(s,t)$ of reachable vertices in $G$, each taking $\mathcal O(k n)$ space. Then, for any query $(s, t, c)$ we evaluate $\mathcal K_{s,t}$ under $f_c$ and return the cheapest path among them.
 
 Note that $\mathcal P_{s,t}$ can have a cardinality that is exponential in $n$. So, if we wanted to use an algorithm that solves \cref{prob:portfolioExplicit} in order to find answers for \cref{prob:shortest-path}, then we had exponential worst-case runtime no matter what. Instead, we define a sibling problem to \cref{prob:portfolioExplicit}, whose input is polynomial in $n, m, N$.
-Instead of the explicit $\mathcal P_{s,t}$ and the functions over them we pass $G$ and $\mathcal C$ as input and let the algorithm decide if it needs to find all paths between $s$ and $t$ or if it does not actually need the entire set in order to find a fitting subset. The relative cost $\epsilon(\mathcal K_{s,t})$ can also be computed without being given the explicit $\mathcal F$, by just taking $c\in \mathcal C$ and computing the path costs as sums of the costs of their edges.
+Instead of the explicit $\mathcal P_{s,t}$ and the functions over them we pass $G$ and $\mathcal C$ as input and let the algorithm decide if it needs to find all paths between $s$ and $t$ or if it does not actually need the entire set in order to find a fitting subset. The relative cost $\alpha(\mathcal K_{s,t})$ can also be computed without being given the explicit $\mathcal F$, by just taking $c\in \mathcal C$ and computing the path costs as sums of the costs of their edges.
 
 \begin{problem}[implicit $(s,t)$-Portfolio]
 \label{prob:portfolio}
-Given the tuple $(G, \mathcal C, \mathcal D, k)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\} \subseteq \mathcal P_{s,t}$, called a \emph{portfolio}, such that $\epsilon(\mathcal K_{s,t})$ is as small as possible.
+Given the tuple $(G, \mathcal C, \mathcal D, k, s, t)$ find a collection of $k$ candidate paths $\mathcal{K}_{s,t} = \{P_1,\dots,P_k\} \subseteq \mathcal P_{s,t}$, called a \emph{portfolio}, such that $\alpha(\mathcal K_{s,t})$ is as small as possible.
 \end{problem}
 
 Given this problem, we can now use a black-box algorithm \textsc{PortfolioAlg} for it and describe the strategy with which we solve \cref{prob:shortest-path} in \cref{alg:portfolio}. If we take $k = \mathcal O(n)$, then all the inputs to \textsc{PortfolioAlg} are polynomial in $n,m,N$ and if \textsc{PortfolioAlg}'s worst-case runtime is polynomial in $n,m,N,k$, then \cref{alg:portfolio} has a worst-case runtime that is polynomial in its input length.

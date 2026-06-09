@@ -5,7 +5,7 @@ In \nameref{prob:shortest-path} we are given a query $(s, t)$, the source and ta
 
 On the other hand, we can easily construct arbitrarily hard graphs and queries. For some pair $(s, t)$ in $V$, there can be $\mathcal O(n!)$ many paths that connect them, and for each such $P$ we could assign exactly one cost function in $\mathcal C$ where any other path $P'$ costs arbitrarily much more; $f_c(P') > z\cdot f_c(P)$ for any $z \in \mathbb R$. For such a difficult setting the portfolio method will be unusable, the probability that a cheap path is in the portfolio would be $O(1 / n!)$. In such settings it is prudent to pay in query time and use \cref{alg:dijkstra}. Real-world traffic networks are not very likely to behave this way, and that is the point we want to make use of.
 
-Hence, we study the $(s,t)$-pairs in \cref{shanghai} and \cref{losangeles} in order to better grasp the structure of their graphs and cost distributions.
+Hence, we study the $(s,t)$-pairs in \cref{shanghai} in order to better grasp the structure of their graphs and cost distributions.
 For that purpose let us find patterns of the distance random variables $d_{s,t}$ for all $s, t$. \Cref{shanghai_hist} shows the expected distance over the vertex pairs in \cref{shanghai}.
 
 \begin{figure}
@@ -22,7 +22,7 @@ In order to find some first $(s,t)$-queries that should prove interesting or dif
 \begin{figure}
     \centering
     \includegraphics{figures/sh_mean_std.pdf}
-\caption{The expectance values against the standard deviation of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}. Each point corresponding to an $(s,t)$ pair is two-coloured matching the colouring in \cref{fig:shanghai} in order to more easily find the corresponding pairs there. For a larger, interactive plot visit \href{https://finnharbeke.github.io/shortest-path-portfolios/sh_dist_scatter.html}{this project’s GitHub Pages}.}
+\caption{The expected distance against the standard deviation of $d_{s,t}$ over all $(s, t)$ pairs in \cref{shanghai}. Each point corresponding to an $(s,t)$ pair is two-coloured matching the colouring in \cref{fig:shanghai} in order to more easily find the corresponding pairs there. For a larger, interactive plot visit \href{https://finnharbeke.github.io/shortest-path-portfolios/sh_dist_scatter.html}{this project’s GitHub Pages}.}
 \label{fig:mean_vs_std}
 \end{figure}
 

@@ -57,13 +57,29 @@ if __name__ == "__main__":
     i = 20
     # plot_df = querytimes[(querytimes['s'] == querytimes.iloc[0]['s']) & (querytimes['t'] == querytimes.iloc[i]['t'])]
     plot_df.sort_values('method', inplace=True, ascending=False)
-    gb_qt = plot_df.groupby(by=['method', 'k', 's', 't'], sort=False).agg(dict(cost = 'mean', runtime='mean', method='first', k='first', increase='mean'))
+    plot_df['approx'] = plot_df['increase'] + 1
+    plot_df['st'] = plot_df['s'].astype(str) + ' - ' + plot_df['t'].astype(str)
+    gb_qt = plot_df.groupby(by=['method', 'k', 'st'], sort=False).agg(dict(cost = 'mean', runtime='mean', method='first', k='first', approx='mean', st='first'))
     plot_df = gb_qt
+    not_easy = plot_df['st'][(plot_df['k'] == 3) & (plot_df['approx'] != 1)]
+    plot_df = plot_df[plot_df['st'].isin(not_easy)]
+    top_10= plot_df['st'].value_counts().head(10).index
+    plot_df = plot_df[plot_df['st'].isin(top_10)]
     _ = plt.figure(figsize=(10, 8))
     # for method in plot_df['method'].unique():
     #     sns.regplot(plot_df[plot_df['method'] == method], x='cost', y='runtime', label=method)
-    sns.scatterplot(plot_df, x='runtime', y='increase', hue='method', style='k', s=100, alpha=0.5)
-    plt.legend()
+    proper = {'greedy': 'Greedy', 'most frequent shortest paths': 'MFSP', 'djikstra': 'Dijkstra'}
+    plot_df['method'] = plot_df['method'].str.replace(proper)
+    markers = {'Greedy': 'o', 'MFSP': 's', 'Dijkstra': 'X'}
+    ax = sns.scatterplot(plot_df, x='runtime', y='approx', hue='st', style='method', s=100, alpha=0.7, markers=markers)
+    handles, labels = ax.get_legend_handles_labels()
+    # Create a single handle (e.g., first one)
+    custom_handle = [handles[1]]  # or create a custom Patch
+    sty_h, sty_l = zip(*list(filter(lambda xhl: not xhl[1][0].isdigit() and (xhl[1] not in ['st', 'method']), zip(handles, labels))))
+    ax.legend(handles=custom_handle + list(sty_h), labels=['s - t'] + list(sty_l))
+    ax.set_xlabel(r'$T^q(ALG)$ (ns)')
+    ax.set_ylabel(r'$\overline{\alpha} (\text{ALG}, (G, \mathcal{C}, \mathcal{D}); s, t)$')
+
     plt.tight_layout()
-    plt.savefig('runtime_vs_increase.png')
+    plt.savefig('figures/runtime_vs_approx.png')
 

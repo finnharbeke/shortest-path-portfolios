@@ -249,41 +249,43 @@ class Portfolio:
 if __name__ == "__main__":
     g = Graph.load(city='la')
 
-    # for i, (u, v) in pbar:
-    #     pbar.write(f'{u} -> {v}')
-    #     for k in range(8, 0, -1):
-    #         p = Portfolio.greedy(g, u, v, k=k)
-    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
-    #
-    # pbar = tqdm.tqdm(pairs.iterrows())
-    # for i, (u, v) in pbar:
-    #     pbar.write(f'{u} -> {v}')
-    #     for k in range(8, 0, -1):
-    #         p = Portfolio.most_frequent(g, u, v, k=k)
-    #     # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
-    #
-    random.seed(55)
-    print('='*50)
-    done = set()
-    pbar = tqdm.tqdm(range(1000))
-    for i in pbar:
-        u, v = 0, 0
-        while (u == v) or (u, v) in done or g.djikstra(u, v) > 1e8:
-            u = random.randrange(g.n)
-            v = random.randrange(g.n)
-
-        pbar.write(f'{u}-{v}', end=', ' if (i+1) % 10 != 0 else '\n')
+    pairs = pd.read_csv('pick_pairs/sh_picks.csv')
+    pbar = tqdm.tqdm(pairs.iterrows())
+    for i, (u, v) in pbar:
+        pbar.write(f'{u} -> {v}')
         for k in range(8, 0, -1):
-            # Portfolio.greedy(g, u, v, k=k, cache='./cache/random_pairs/')
-            mf = Portfolio.most_frequent(g, u, v, k=k, cache='./cache/random_pairs/')
-            for lmb in [1.05, 1.1, 1.2, 1.3, 1.4]:
-                dj = Portfolio.penalised_djikstra(g, u, v, penalty=lmb, k=k, cache='./cache/random_pairs/')
-                dj.score()
-                dj._opt = mf._opt
-                dj._to_cache(cache="./cache/random_pairs/")
+            p = Portfolio.greedy(g, u, v, k=k)
+        # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_greedy.png')
 
-        done.add((u, v))
+    pbar = tqdm.tqdm(pairs.iterrows())
+    for i, (u, v) in pbar:
+        pbar.write(f'{u} -> {v}')
+        for k in range(8, 0, -1):
+            p = Portfolio.most_frequent(g, u, v, k=k)
+        # p.draw(savefig=f'./graph_drawings/sh/{u}-{v}_mf.png')
 
-    p = Portfolio.penalised_djikstra(g, 37, 17)
-    print(p)
-
+    # random.seed(55)
+    # print('='*50)
+    # done = set()
+    # pbar = tqdm.tqdm(range(1000))
+    # for i in pbar:
+    #     u, v = 0, 0
+    #     while (u == v) or (u, v) in done or g.djikstra(u, v) > 1e8:
+    #         u = random.randrange(g.n)
+    #         v = random.randrange(g.n)
+    #
+    #     pbar.write(f'{u}-{v}', end=', ' if (i+1) % 10 != 0 else '\n')
+    #     for k in range(8, 0, -1):
+    #         # Portfolio.greedy(g, u, v, k=k, cache='./cache/random_pairs/')
+    #         mf = Portfolio.most_frequent(g, u, v, k=k, cache='./cache/random_pairs/')
+    #         for lmb in [1.05, 1.1, 1.2, 1.3, 1.4]:
+    #             dj = Portfolio.penalised_djikstra(g, u, v, penalty=lmb, k=k, cache='./cache/random_pairs/')
+    #             dj.score()
+    #             dj._opt = mf._opt
+    #             dj._to_cache(cache="./cache/random_pairs/")
+    #
+    #     done.add((u, v))
+    #
+    # p = Portfolio.penalised_djikstra(g, 37, 17)
+    # print(p)
+    #

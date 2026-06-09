@@ -5,30 +5,162 @@ We propose to solve \cref{prob:shortest-path} with the framework given in \cref{
 In this section we propose three different algorithms solving \cref{prob:portfolio}.
 
 \subsection{Algorithms}
+\label{sec:algorithms}
 
-If you consider $\mathrm{value}(\mathcal K_{s,t}) = -\mathrm{cost}(\mathcal K_{s,t})$ and the maximization problem of that function, then $\mathrm{value}(\mathcal K_{s,t})$ is a monotone submodular function, as pointed out by \cite{miltos} and initially shown by \cite{kr18}. Note that \cref{prob:portfolio} is an equivalent problem, and we can thus solve it with the widespread \textit{Greedy} algorithm. It builds the solution set iteratively, starting with the path that is the cheapest in expectation and then adding one path at a time to the set, such that at every step the cost is minimised over all candidates. We describe the procedure in \cref{alg:greedy}.
+If you consider the maximization problem of the portfolio optimization problem, then the value function is a monotone submodular function, as pointed out by \cite{miltos} and initially shown by \cite{kr18}. Thus, the widespread \textit{Greedy} algorithm provides a $(1 - 1/e)$-factor approximation.
+While there do not exist the same proven guarantees, we can use the same approach to greedily build a portfolio.
+It builds the solution set iteratively, starting with the path that is the cheapest in expectation and then adding one path at a time to the set, such that at every step the cost is minimised over all candidates. We describe the procedure in \cref{alg:greedy}.
 %As shown by \cref{nemhauser} it is thus a $(1 - 1/e)$ approximation.
 
-\begin{algorithm}[H]
-\caption{Greedy Algorithm for \nameref{prob:portfolio}}
+\begin{algorithm}
+\caption{Greedy Algorithm for \nameref{prob:portfolio}.}
 \label{alg:greedy}
 \begin{algorithmic}[1]
-\Procedure{Greedy}{$G$, $\mathcal C$, $\mathcal D$}
-\State $\mathcal K^0_{s,t} \gets \emptyset$
+\Procedure{Greedy}{$G$, $\mathcal C$, $\mathcal D$, $s$, $t$}
+\State $\mathcal K_{s,t} \gets \emptyset$
 \State $\mathcal P_{s,t} \gets$ the set of all paths from $s$ to $t$
-\State $i \gets 0$
-\While{$i < k$}
-  \State $i \gets i+1$
+\For{$i \gets 1$ \dots $k$}
   \State $P^\dagger \gets$ none
   \State best $\gets \infty$ 
   \For{$P \in \mathcal P_{s,t}$}
-    \If{$\text{cost}(\mathcal K^{i-1}_{s,t} \cup \{P\}) < \text{best}$}
+    \If{$\text{cost}\left(\mathcal K_{s,t} \cup \{P\}\right) < \text{best}$}
       \State $P^\dagger \gets P$
     \EndIf
   \EndFor
-  \State $\mathcal K^i_{s,t} =\mathcal K^{i-1}_{s,t} \cup \{P^\dagger\}$ 
-\EndWhile
+  \State $\mathcal K_{s,t} =\mathcal K_{s,t} \cup \{P^\dagger\}$ 
+\EndFor
 \State \Return $\mathcal K^k_{s,t}$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
+
+Greedy iterates over the entire set $\mathcal P_{s,t}$ in each round. Since $\mathcal P_{s,t}$ can contain exponentially many paths, its worst-case running time is exponential in $n$. Even for the modest $n = 67$ of \cref{shanghai}, enumerating all $s$-$t$ paths is computationally costly. Still, for any algorithm that builds $\mathcal K_{s,t}$ element by element, Greedy is the one that takes the best choice at every step.
+
+An alternative approach is to rank paths by how often they are the shortest. For each path $P \in \mathcal P_{s,t}$, define its \emph{frequency} as
+\[
+\Pr(P^*_{s,t} = P) = \Pr_{c \sim \mathcal D}\left[P = \argmin_{P' \in \mathcal P_{s,t}} f_c(P')\right].
+\]
+
+The \emph{most frequent shortest paths} (MFSP) algorithm simply selects the $k$ paths with the highest frequency:
+
+\begin{algorithm}
+\caption{Most Frequent Shortest Paths (MFSP) for \nameref{prob:portfolio}.}
+\label{alg:mfsp}
+\begin{algorithmic}[1]
+\Procedure{MFSP}{$G$, $\mathcal C$, $\mathcal D$, $k$, $s$, $t$}
+  \State $\text{freq}[\cdot] \gets \text{empty dictionary}$
+  \For{$c \in \mathcal C$}
+    \State $P \gets \textsc{Dijkstra}(G,\, s,\, t,\, c)$ \Comment{Shortest under $c$.}
+    \State $\text{freq}[P] \gets \text{freq}[P] + 1$
+  \EndFor
+  \State \Return $k$ paths with largest $\text{freq}[\cdot]$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Unlike Greedy, MFSP never enumerates $\mathcal P_{s,t}$ explicitly. Its runtime is dominated by $N$ Dijkstra calls, each taking $\mathcal O(m \log n)$ time, yielding $T^0(\textsc{MFSP}) = \mathcal O(N m \log n)$ per pair $(s, t)$. The query phase is unchanged: given a realised $c$, evaluate the $k$ portfolio paths under $f_c$ and return the cheapest.
+
+Both \cref{alg:greedy,alg:mfsp} rely on repeated shortest-path computations under the full distribution $\mathcal D$. A lighter alternative is to use only the \emph{expected} edge costs
+\[
+\overline c(e) = \mathbb{E}_{c \sim \mathcal D}[c(e)],
+\]
+and obtain $k$ candidate paths by repeatedly running Dijkstra while penalising edges that have already been selected. Concretely, after finding a path $P$, we multiply the expected cost of every edge in $P$ by a penalty factor $\lambda > 1$, so that subsequent shortest-path computations are discouraged from reusing the same edges and instead explore alternative routes. The procedure is given in \cref{alg:penalised}.
+
+\begin{algorithm}
+\caption{$\lambda$-Penalised Dijkstra for \nameref{prob:portfolio}.}
+\label{alg:penalised}
+\begin{algorithmic}[1]
+\Procedure{$\lambda$-PenalisedDijkstra}{$G$, $\mathcal C$, $\mathcal D$, $k$, $s$, $t$}
+  \State $\overline c \gets \mathbb{E}_{c \sim \mathcal D}[c(\cdot)]$
+  \State $\mathcal K_{s,t} \gets \emptyset$
+  \State $p[e] \gets 1$ for all $e \in E$ \Comment{Edge penalties}
+  \For{$i \gets 1$ \dots $k$}
+    \State $P \gets \textsc{Dijkstra}(G,\, s,\, t,\, \overline c \cdot p)$
+    \State $\mathcal K_{s,t} \gets \mathcal K_{s,t} \cup \{P\}$
+    \For{$e \in P$}
+      \State $p[e] \gets \lambda \cdot p[e]$ \Comment{Penalise the used edges.}
+    \EndFor
+  \EndFor
+  \State \Return $\mathcal K_{s,t}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Penalised Dijkstra never consults the full distribution $\mathcal D$ beyond computing the per-edge expectation $\overline c$. Its preprocessing cost is a single pass over $\mathcal C$ to compute means ($\mathcal O(N m)$) followed by $k$ Dijkstra calls on the mean-weight graph ($\mathcal O(k m \log n)$). Because it relies solely on expected costs, it ignores the stochastic nature of edge weights entirely: a path that is never the shortest under any realisation but has low expected cost may be selected, while a path that is frequently the shortest under many $c \in \mathcal C$ may be missed if its expected cost is high.
+
+\subsection{Quantitative Analysis}
+
+\begin{figure*}
+    \centering
+    \includegraphics{figures/sh_ratios.pdf}
+\caption{The observed mean of the expected approximation factor of the algorithms presented in \cref{sec:algorithms}, when used as the \textsc{PortfolioAlg} for \cref{alg:portfolio}. The mean is observed over $r$ uniformly sampled $(s, t)$ pairs of the graph in \cref{shanghai}, the Shanghai Dataset, where $r=334$ for $\lambda$-penalised Dijkstra and $r=167$ for the other algorithms. The error bands are 95\% confidence intervals on the sampled expected approximation factors.}
+\label{fig:sh_ratios}
+\end{figure*}
+
+In \cref{sec:algorithms} we described three different approaches to solve \cref{prob:portfolio}. With the framework given in \cref{alg:portfolio}, we thus have three full algorithms for \cref{prob:shortest-path}, all of them are parametrised by $k$ while $\lambda$-penalised Dijkstra has an additional parameter.
+Taking \cref{shanghai}, we can evaluate their performance on that graph and its edge cost distribution. As discussed in \cref{sec:prelim}, for a query $(s,t)$ we are interested in the ratio between the expected cost of the algorithm's answer and the expected cost of the shortest path, denoted by $\alpha(\textsc{alg}, \cref{shanghai}; s, t)$. I.e.~how much more does the answer cost than optimally possible. Over $r$ uniformly sampled $(s,t)$ queries we then estimate the expected value of that ratio for any query with $\overline\alpha_r(\textsc{alg}, \cref{shanghai})$. In \cref{fig:sh_ratios}, those numbers are visualised.
+
+At $k=1$ all algorithms achieve nearly the same expected approximation factor of roughly $1.018$. As $k$ grows, every algorithm improves monotonically as expected, but the rates at which they do differ sharply. Greedy and MFSP drop quickly: their extra cost over optimal is already below $0.5\%$ at $k=2$ and reaches mere hundredths of a percent by $k=8$. By contrast, the $\lambda$-penalised Dijkstra variants decay more slowly---the best-tuned case ($\lambda=1.2$) retains an excess of roughly $0.12\%$ at $k=8$, an order of magnitude worse than Greedy or MFSP. This must be because penalised Dijkstra, only using expected edge costs and reweighing edges, yields paths of a diversity that is different from the diversity that is valuable to portfolios. MFSP performs similarly to Greedy across all $k$, despite never enumerating the full path set and requiring only a fixed number of Dijkstra runs in preprocessing. This is a positive result, given MFSP is one of the simplest polynomial-time algorithms that can make use of information in the entire distribution.
+
+The central tradeoff we are exploring with the \cref{alg:portfolio} approach to solving \nameref{prob:shortest-path} is the one between answer quality and query runtime. \cref{alg:dijkstra} is the one extreme, that does all the work at query time. It has a query runtime $T^q(\textsc{Alg})$ of $\mathcal O(m \log n)$ and grants perfect answer quality. The query runtime  of \cref{alg:portfolio} is $\mathcal O(kn)$, for evaluating the costs of each of the $k$ paths in $\mathcal K_{s,t}$. With a higher $k$ runtime increases linearly, but the expected approximation factor decreases, we can even hit perfect scores like Dijkstra. From a sample of different $(s,t)$ query pairs, we visualise the tradeoff in \cref{fig:tradeoff}. For the sake of visual clarity, we omit the results of $\lambda$-penalised Dijkstra.
+We see that for all pairs, the query runtimes are less than that of Dijkstra for portfolios with $k = 3$ or less. Dijkstra's queries take about the time of evaluating portfolios with 4-6 paths. For bigger graphs, Dijkstra should only get slower in comparison if there are more than a linear amount of edges.
+
+\begin{figure}
+    \centering
+    \includegraphics{figures/runtime_vs_approx.pdf}
+\caption{The expected approximation factor of 10 $(s,t)$-queries compared to query runtime measured in nanoseconds. Each $(s,t)$ query is given a colour, and besides the results of Dijkstra, portfolios from Greedy and MFSP are use with $1\le k\le 6$. The queries are the first 10 of uniformly sampled, reachable $(s,t)$ pairs, where Greedy's portfolio for $k = 3$ did not already obtain perfect answers. For reference, this applied to only 18 of 50 samples. }
+
+\label{fig:tradeoff}
+\end{figure}
+
+Before we proceed to qualitatively evaluate the algorithms in the next section, we emphasise some of the core differences of \cref{alg:greedy,alg:mfsp,alg:penalised} in \cref{tab:algo-summary}.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lccc}
+\textbf{\textsc{Alg}} & \textbf{Uses $\mathcal D$?} & \textbf{Full $\mathcal P_{s,t}$?} & \textbf{$T^0(\textsc{Alg})$ per pair} \\
+\hline
+Greedy            & Fully  & Yes & $\Omega(n!)$ \\
+MFSP              & Only $P^*_{s,t}$  & No  & $\mathcal O(N m \log n)$ \\
+Pen. Dijkstra & No & No & $\mathcal O(N m + k m \log n)$ \\
+\hline
+\end{tabular}
+\caption{Properties of the three portfolio algorithms from \cref{sec:algorithms}.}
+\label{tab:algo-summary}
+\end{table}
+
+While we have to constrain ourselves to the Shanghai Dataset in this report, some first evaluations have been made on the \href{https://www.kaggle.com/datasets/annnnguyen/metr-la-dataset}{METR-LA} dataset, where similar behaviour can be observed while the overall difficulty is higher. The single-path portfolios start of with a clearly higher cost increase, and for $k=8$ MFSP achieves expected approximation factors of around $1.002$, whereas for Shanghai it is around $1.0002$. For a short insight see\cref{fig:sh_la_ratios}.
+
+\subsection{Qualitative Analysis}
+\label{sec:qualitative}
+
+Let us take a look at an example query in \cref{shanghai} and how the different algorithms preprocesseed the graph to compute a suiting portfolio. A particular portfolio induces a partition on $\mathcal C$, we can group its cost functions by which ones assign the first path the cheapest cost, which ones assign the second path the cheapest cost and so on. Let us denote that partition for a given portfolio $\mathcal K$ by
+\[
+Q(\mathcal K) = \left\{\left\{ c\in\mathcal C\mid \forall P'\in\mathcal K\ c(P) \le c(P')\right\} \mid P \in \mathcal K\right\}.
+\]
+
+Every set in $Q(\mathcal K)$ is thus also an event of the probability space of the distribution $\mathcal D$. It is the event that ``$P$ is the cheapest of all paths in $\mathcal K$''. We denote its probability by
+\[
+\Pr[P\text{ wins }\mathcal K] = \Pr\left[\left\{ c\in\mathcal C\mid \forall P'\in\mathcal K\ c(P) \le c(P')\right\}\right].
+\]
+
+If $\Pr[P\text{ wins }\mathcal K]$ is evenly distributed across all $P\in\mathcal K$, then each path carries its weight and the portfolio covers the distribution broadly. But even a path that is unlikely to win overall can be valuable: when it does win, it may bring a significant decrease in cost compared to the other candidates, justifying its place in the portfolio.
+
+For a single set in a partition $Q(\mathcal K)$, where some path $P$ is the one that wins, we can observe the typical ``traffic situation'' for that event. Let us define the relative mean cost of an edge $e\in E$ in that set, as a ratio with the overall mean cost of $e$:
+\[
+\frac{\overline c_{P,\mathcal K}(e)}{\overline c(e)} = \frac{\mathbb E_{c\sim D}[c(e) \mid P\text{ wins }\mathcal K]}{\mathbb E_{c\sim D}[c(e)]}
+\]
+
+For the pair $(17,49)$ in \cref{shanghai}, we see the paths chosen by Greedy and MFSP, as well as the respective $\Pr[P\text{ wins }\mathcal K]$ and the $\frac{\overline c_{P,\mathcal K}(e)}{\overline c(e)}$ for all edges on the paths visualised in \cref{fig:1749g_vs_m}. The figure contains a lot of information, but we think it is all necessary information to be able to get some insight on the given portfolios and their differences. 
+The chosen pair is a very difficult query, in the sense that the expected approximation factors above $1.01$ are clearly outside of the $95\%$ confidence intervals for $k=3$ in \cref{fig:sh_ratios}. This must be due to many different paths with similar distances between the source and target. We see that the two vertices are sort of on two ends of a manhattan-like grid.
+The edge that Greedy has over MFSP is well emphasised by the respective choices of the third path in the portfolio. Greedy is able to find the path that shines only rather rare scenarios, but when it does it shines brightly and can bring the biggest decrease in expected cost of the portfolio. Such a path will not be found by MFSP until a larger $k$ is being used.
+For this query $\lambda$-penalised Dijkstra actually finds the same path as the third part of its portfolio, but chooses a second path that is less similar to the red path than the blue one and thus still has a worse expected approximation factor than MFSP's portfolio. \cref{fig:1749g_vs_pd}
+
+\begin{figure*}
+    \centering
+    \includegraphics{figures/sh_17_49_greedy_vs_mfsp.pdf}
+\caption{Comparison of the two portfolios with $k = 3$ computed by \cref{alg:greedy,alg:mfsp} for the pair $(17, 49)$. The chosen paths are displayed in the top-left and top-right subplots respectively with their expected approximation factors in the title. The pie chart visualises $\Pr[P\text{ wins }\mathcal K]$ for all $P$ of Greedy's portfolio in the outer ring, and those of MFSP's portfolio in the inner ring respectively. Greedy's third path (green) has low probability of winning, but is the best match for the red and blue paths by Greedy's definition. MFSP finds the same two first paths, but then continues with another path (purple) along similar vertices, because it is another dominant shortest path, but not an as much cheaper alternative as the green one is. The bottom row of subplots visualise $\frac{\overline c_{P,\mathcal K}(e)}{\overline c(e)}$ for the three paths of the left portfolio and for the three paths of the right portfolio.}
+\label{fig:1749g_vs_m}
+\end{figure*}
+
+

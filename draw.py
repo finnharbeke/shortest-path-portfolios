@@ -22,11 +22,13 @@ scm = sns.color_palette('flare', as_cmap=True)
 
 def draw_nx(g: Graph, savefig=None, figsize=(8,5)):
     nxg = nx.DiGraph()
-    nxg.add_edges_from(g.arcs)
+    arcs_no_self_loops = list(filter(lambda tup: tup[0] != tup[1], g.arcs))
+    print(len(g.arcs), len(arcs_no_self_loops))
+    nxg.add_edges_from(arcs_no_self_loops)
     fig = plt.figure(figsize=figsize)
     node_color = [cm(u / (g.n - 1)) for u in list(nxg)]
     node_color = list(map(mpl.colors.to_hex, node_color))
-    nx.draw_kamada_kawai(nxg, labels={u: u for u in range(g.n)}, font_size=9, ax=fig.gca(), node_color=node_color)
+    nx.draw_kamada_kawai(nxg, labels={u: u for u in list(nxg)}, font_size=9, ax=fig.gca(), node_color=node_color)
     plt.tight_layout()
     if savefig is None:
         plt.show()
@@ -186,10 +188,10 @@ if __name__ == "__main__":
     print(sh.out_arcs[10])
     print([sh.arcs[a] for a in sh.out_arcs[10]])
 
-    # draw_nx(sh, savefig='graph_drawings/sh.png')
-    # sz = Graph.load('sz')
-    # draw_nx(sz, savefig='graph_drawings/sz.png', figsize=(9,6))
-    # la = Graph.load('la')
-    # draw_nx(la, savefig='graph_drawings/la.png', figsize=(11, 7))
+    draw_nx(sh, savefig='graph_drawings/sh.png')
+    sz = Graph.load('sz')
+    draw_nx(sz, savefig='graph_drawings/sz.png', figsize=(9,6))
+    la = Graph.load('la')
+    draw_nx(la, savefig='graph_drawings/la.png', figsize=(11, 7))
 
     draw_coords(sh, 'data/sh_coords.csv')
